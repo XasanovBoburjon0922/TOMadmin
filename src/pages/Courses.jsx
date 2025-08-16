@@ -1,104 +1,180 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Card, Table, Button, Form, Modal, Input, Select, Tag, InputNumber, Upload, Space, Typography, message } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, FilterOutlined, BookOutlined } from "@ant-design/icons";
-import { listCourses, createCourse, updateCourse, deleteCourse } from "../api/api";
+"use client"
 
-const { Title } = Typography;
+import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
+import {
+  Card,
+  Table,
+  Button,
+  Form,
+  Modal,
+  Input,
+  Select,
+  Tag,
+  InputNumber,
+  Upload,
+  Space,
+  Typography,
+  message,
+} from "antd"
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  FilterOutlined,
+  BookOutlined,
+} from "@ant-design/icons"
+import { listCourses, createCourse, updateCourse, deleteCourse } from "../api/api"
+
+const { Title } = Typography
+
 
 const Courses = () => {
-  const { t, i18n } = useTranslation();
-  const [courses, setCourses] = useState([]); // Initialize as empty array
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState(null);
-  const [filterType, setFilterType] = useState(null);
-  const [form] = Form.useForm();
+  const { t, i18n } = useTranslation()
+  const [courses, setCourses] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingCourse, setEditingCourse] = useState(null)
+  const [filterType, setFilterType] = useState(null)
+  const [form] = Form.useForm()
 
   useEffect(() => {
-    fetchCourses();
-  }, [filterType]);
+    fetchCourses()
+  }, [filterType])
 
   const fetchCourses = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const data = await listCourses(filterType ? { type: filterType } : {});
-      // Ensure data is an array; if null or undefined, set to empty array
-      setCourses(Array.isArray(data) ? data : []);
+      // For testing, you can uncomment the mock data
+      /*
+      const mockData = {
+        courses: [
+          {
+            id: "1",
+            name: { en: "Web Development", ru: "Веб-разработка", uz: "Veb-dasturlash" },
+            branch_description: {
+              en: "Learn web development",
+              ru: "Изучите веб-разработку",
+              uz: "Veb-dasturlashni o'rganing",
+            },
+            duration: { en: "3 months", ru: "3 месяца", uz: "3 oy" },
+            description: ["Comprehensive course on web technologies"],
+            price: 299,
+            type: "type1",
+            picture_url: "https://example.com/image.jpg",
+            created_at: "2025-08-01T12:00:00Z",
+          },
+          {
+            id: "2",
+            name: { en: "Data Science", ru: "Наука о данных", uz: "Ma'lumotlar ilmi" },
+            branch_description: {
+              en: "Master data science",
+              ru: "Овладейте наукой о данных",
+              uz: "Ma'lumotlar ilmini o'rganing",
+            },
+            duration: { en: "6 months", ru: "6 месяцев", uz: "6 oy" },
+            description: ["Learn data analysis and ML"],
+            price: 499,
+            type: "type2",
+            picture_url: "https://example.com/image2.jpg",
+            created_at: "2025-07-15T10:00:00Z",
+          },
+        ],
+        total_count: 2,
+      }
+      const data = mockData.courses
+      */
+      const response = await listCourses()
+      console.log("API Response:", response)
+      const data = response?.data?.courses || []
+      const filteredCourses = filterType
+        ? data.filter((course) => course.type === filterType)
+        : data
+      setCourses(Array.isArray(filteredCourses) ? filteredCourses : [])
     } catch (error) {
-      message.error(t("fetchError"));
-      setCourses([]); // Set to empty array on error
+      console.error("Fetch Error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+      })
+      message.error(t("fetchError") + `: ${error.message}`)
+      setCourses([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSubmit = async (values) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const formData = new FormData();
-      formData.append("name", JSON.stringify(values.name));
-      formData.append("branch_description", JSON.stringify(values.branch_description));
-      formData.append("duration", JSON.stringify(values.duration));
-      formData.append("description", values.description);
-      formData.append("price", values.price);
-      formData.append("type", values.type);
+      const formData = new FormData()
+      formData.append("name", JSON.stringify(values.name))
+      formData.append("branch_description", JSON.stringify(values.branch_description))
+      formData.append("duration", JSON.stringify(values.duration))
+      formData.append("description", values.description)
+      formData.append("price", values.price.toString())
+      formData.append("type", values.type)
       if (values.file?.file) {
-        formData.append("file", values.file.file);
+        formData.append("file", values.file.file)
       }
 
       if (editingCourse) {
-        await updateCourse(editingCourse.id, formData);
-        message.success(t("save"));
+        await updateCourse(editingCourse.id, formData)
+        message.success(t("save"))
       } else {
-        await createCourse(formData);
-        message.success(t("addCourse"));
+        await createCourse(formData)
+        message.success(t("addCourse"))
       }
-      fetchCourses();
-      setIsModalOpen(false);
+      fetchCourses()
+      setIsModalOpen(false)
+      form.resetFields()
     } catch (error) {
-      message.error(t("fetchError"));
+      console.error("Submit Error:", error)
+      message.error(t("fetchError") + `: ${error.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEdit = (course) => {
-    setEditingCourse(course);
+    setEditingCourse(course)
     form.setFieldsValue({
       name: course.name,
       branch_description: course.branch_description,
       duration: course.duration,
-      description: course.description,
+      description: course.description.join("\n"),
       price: course.price,
       type: course.type,
-    });
-    setIsModalOpen(true);
-  };
+    })
+    setIsModalOpen(true)
+  }
 
   const handleDelete = async (id) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      await deleteCourse(id);
-      message.success(t("delete"));
-      fetchCourses();
+      await deleteCourse(id)
+      message.success(t("delete"))
+      fetchCourses()
     } catch (error) {
-      message.error(t("fetchError"));
+      console.error("Delete Error:", error)
+      message.error(t("fetchError") + `: ${error.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const getTypeColor = (type) => {
     switch (type) {
       case "type1":
-        return "blue";
+        return "green"
       case "type2":
-        return "green";
+        return "emerald"
       default:
-        return "default";
+        return "default"
     }
-  };
+  }
 
   const columns = [
     {
@@ -126,13 +202,31 @@ const Courses = () => {
       title: t("coursePrice"),
       dataIndex: "price",
       key: "price",
-      render: (price) => <span className="font-semibold text-green-600">${price?.toLocaleString() || "0"}</span>,
+      render: (price) => (
+        <span className="font-semibold text-green-600">
+          ${price?.toLocaleString() || "0"}
+        </span>
+      ),
     },
     {
       title: t("courseDuration"),
       dataIndex: ["duration", i18n.language],
       key: "duration",
-      render: (duration, record) => <span className="text-gray-600">{duration || record.duration?.en || "N/A"}</span>,
+      render: (duration, record) => (
+        <span className="text-gray-600">{duration || record.duration?.en || "N/A"}</span>
+      ),
+    },
+    {
+      title: t("courseImage"),
+      dataIndex: "picture_url",
+      key: "picture_url",
+      render: (url) => (
+        url ? (
+          <img src={url} alt="Course" className="w-16 h-16 object-cover rounded" />
+        ) : (
+          <span className="text-gray-600">N/A</span>
+        )
+      ),
     },
     {
       title: t("createdDate"),
@@ -157,7 +251,7 @@ const Courses = () => {
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
-            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+            className="text-green-500 hover:text-green-700 hover:bg-green-50"
           />
           <Button
             type="text"
@@ -169,7 +263,7 @@ const Courses = () => {
         </Space>
       ),
     },
-  ];
+  ]
 
   return (
     <div className="space-y-6">
@@ -178,7 +272,7 @@ const Courses = () => {
           <h1 className="text-2xl font-bold text-gray-800 mb-2">{t("coursesTitle")}</h1>
           <p className="text-gray-600">{t("coursesTitle")}</p>
         </div>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-传入sm:space-x-3">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
           <Select
             placeholder={t("filterByType")}
             allowClear
@@ -193,11 +287,11 @@ const Courses = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
-              setEditingCourse(null);
-              form.resetFields();
-              setIsModalOpen(true);
+              setEditingCourse(null)
+              form.resetFields()
+              setIsModalOpen(true)
             }}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 border-0 rounded-lg shadow-sm hover:shadow-md"
+            className="bg-gradient-to-r from-green-500 to-green-600 border-0 rounded-lg shadow-sm hover:shadow-md"
           >
             {t("addCourse")}
           </Button>
@@ -217,7 +311,7 @@ const Courses = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} ${t("courses")}`,
           }}
           locale={{
-            emptyText: t("noData"), // Custom message for empty table
+            emptyText: t("noData"),
           }}
           className="rounded-lg"
         />
@@ -226,10 +320,12 @@ const Courses = () => {
       <Modal
         title={
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
               <BookOutlined className="text-white text-sm" />
             </div>
-            <span className="text-lg font-semibold">{editingCourse ? t("edit") + " " + t("courseName") : t("addCourse")}</span>
+            <span className="text-lg font-semibold">
+              {editingCourse ? t("edit") + " " + t("courseName") : t("addCourse")}
+            </span>
           </div>
         }
         open={isModalOpen}
@@ -375,9 +471,7 @@ const Courses = () => {
                   <UploadOutlined className="text-4xl text-gray-400" />
                 </p>
                 <p className="ant-upload-text text-lg font-medium">{t("uploadImage")}</p>
-                <p className="ant-upload-hint text-gray-500">
-                  {t("uploadImageHint")}
-                </p>
+                <p className="ant-upload-hint text-gray-500">{t("uploadImageHint")}</p>
               </Upload.Dragger>
             </Form.Item>
           </Card>
@@ -390,7 +484,7 @@ const Courses = () => {
               type="primary"
               htmlType="submit"
               loading={loading}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 border-0 rounded-lg"
+              className="bg-gradient-to-r from-green-500 to-green-600 border-0 rounded-lg"
               size="large"
             >
               {editingCourse ? t("save") : t("addCourse")}
@@ -399,7 +493,7 @@ const Courses = () => {
         </Form>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default Courses;
+export default Courses

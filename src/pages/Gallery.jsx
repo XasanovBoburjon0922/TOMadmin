@@ -1,78 +1,81 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Card, Table, Button, Form, Modal, Upload, Row, Col, Empty, Image, message } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, EyeOutlined } from "@ant-design/icons";
-import { listGallery, createGallery, updateGallery, deleteGallery } from "../api/api";
+"use client"
+
+import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
+import { Card, Table, Button, Form, Modal, Upload, Row, Col, Empty, Image, message } from "antd"
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, EyeOutlined } from "@ant-design/icons"
+import { listGallery, createGallery, updateGallery, deleteGallery } from "../api/api"
 
 const Gallery = () => {
-  const { t, i18n } = useTranslation();
-  const [galleries, setGalleries] = useState([]); // Initialize as empty array
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingGallery, setEditingGallery] = useState(null);
-  const [viewMode, setViewMode] = useState("grid");
-  const [form] = Form.useForm();
+  const { t, i18n } = useTranslation()
+  const [galleries, setGalleries] = useState([]) // Initialize as empty array
+  const [loading, setLoading] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingGallery, setEditingGallery] = useState(null)
+  const [viewMode, setViewMode] = useState("grid")
+  const [form] = Form.useForm()
 
   useEffect(() => {
-    fetchGalleries();
-  }, []);
+    fetchGalleries()
+  }, [])
 
   const fetchGalleries = async () => {
     setLoading(true);
     try {
-      const data = await listGallery();
-      // Ensure data is an array; if null or undefined, set to empty array
+      const response = await listGallery();
+      // Extract the galleries array from the response
+      const data = response?.data?.galleries || [];
       setGalleries(Array.isArray(data) ? data : []);
     } catch (error) {
       message.error(t("fetchError"));
-      setGalleries([]); // Set to empty array on error
+      setGalleries([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSubmit = async (values) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const formData = new FormData();
+      const formData = new FormData()
       if (values.file?.file) {
-        formData.append("file", values.file.file);
+        formData.append("file", values.file.file)
       }
 
       if (editingGallery) {
-        await updateGallery(editingGallery.id, formData);
-        message.success(t("save"));
+        await updateGallery(editingGallery.id, formData)
+        message.success(t("save"))
       } else {
-        await createGallery(formData);
-        message.success(t("addImage"));
+        await createGallery(formData)
+        message.success(t("addImage"))
       }
-      fetchGalleries();
-      setIsModalOpen(false);
+      fetchGalleries()
+      setIsModalOpen(false)
     } catch (error) {
-      message.error(t("fetchError"));
+      message.error(t("fetchError"))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEdit = (gallery) => {
-    setEditingGallery(gallery);
-    form.setFieldsValue({});
-    setIsModalOpen(true);
-  };
+    setEditingGallery(gallery)
+    form.setFieldsValue({})
+    setIsModalOpen(true)
+  }
 
   const handleDelete = async (id) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      await deleteGallery(id);
-      message.success(t("delete"));
-      fetchGalleries();
+      await deleteGallery(id)
+      message.success(t("delete"))
+      fetchGalleries()
     } catch (error) {
-      message.error(t("fetchError"));
+      message.error(t("fetchError"))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const columns = [
     {
@@ -118,7 +121,7 @@ const Gallery = () => {
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
-            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+            className="text-green-500 hover:text-green-700 hover:bg-green-50"
           />
           <Button
             type="text"
@@ -130,16 +133,13 @@ const Gallery = () => {
         </div>
       ),
     },
-  ];
+  ]
 
   const GridView = () => (
     <Row gutter={[24, 24]}>
       {galleries.length === 0 ? (
         <Col span={24}>
-          <Empty
-            description={t("noGalleryItems")}
-            className="py-12"
-          />
+          <Empty description={t("noGalleryItems")} className="py-12" />
         </Col>
       ) : (
         galleries.map((item) => (
@@ -166,17 +166,11 @@ const Gallery = () => {
                   type="text"
                   icon={<EditOutlined />}
                   onClick={() => handleEdit(item)}
-                  className="text-blue-500 hover:text-blue-700"
+                  className="text-green-500 hover:text-green-700"
                 >
                   {t("edit")}
                 </Button>,
-                <Button
-                  key="delete"
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  danger
-                  onClick={() => handleDelete(item.id)}
-                >
+                <Button key="delete" type="text" icon={<DeleteOutlined />} danger onClick={() => handleDelete(item.id)}>
                   {t("delete")}
                 </Button>,
               ]}
@@ -199,7 +193,7 @@ const Gallery = () => {
         ))
       )}
     </Row>
-  );
+  )
 
   return (
     <div className="space-y-6">
@@ -227,22 +221,18 @@ const Gallery = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
-              setEditingGallery(null);
-              form.resetFields();
-              setIsModalOpen(true);
+              setEditingGallery(null)
+              form.resetFields()
+              setIsModalOpen(true)
             }}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 border-0 rounded-lg shadow-sm hover:shadow-md"
+            className="bg-gradient-to-r from-green-500 to-green-600 border-0 rounded-lg shadow-sm hover:shadow-md"
           >
             {t("addImage")}
           </Button>
         </div>
       </div>
 
-      <Card
-        className="border-0 shadow-sm"
-        style={{ borderRadius: "16px" }}
-        bodyStyle={{ padding: "24px" }}
-      >
+      <Card className="border-0 shadow-sm" style={{ borderRadius: "16px" }} bodyStyle={{ padding: "24px" }}>
         {viewMode === "grid" ? (
           <GridView />
         ) : (
@@ -268,7 +258,7 @@ const Gallery = () => {
       <Modal
         title={
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
               <PlusOutlined className="text-white text-sm" />
             </div>
             <span className="text-lg font-semibold">
@@ -304,17 +294,14 @@ const Gallery = () => {
           </Form.Item>
 
           <div className="flex justify-end space-x-3 mt-6">
-            <Button
-              onClick={() => setIsModalOpen(false)}
-              className="rounded-lg"
-            >
+            <Button onClick={() => setIsModalOpen(false)} className="rounded-lg">
               {t("cancel")}
             </Button>
             <Button
               type="primary"
               htmlType="submit"
               loading={loading}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 border-0 rounded-lg"
+              className="bg-gradient-to-r from-green-500 to-green-600 border-0 rounded-lg"
             >
               {editingGallery ? t("save") : t("addImage")}
             </Button>
@@ -322,7 +309,7 @@ const Gallery = () => {
         </Form>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default Gallery;
+export default Gallery

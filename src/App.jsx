@@ -1,270 +1,216 @@
 "use client"
 
-import { Layout, Menu, theme, Avatar, Dropdown, Badge } from "antd"
 import { useState } from "react"
-import { Routes, Route, Link, useLocation, Navigate } from "react-router-dom"
-import { useTranslation } from "react-i18next"
-import { useAuth } from "./context/AuthContext"
+import { Layout, Menu, Spin } from "antd"
 import {
   DashboardOutlined,
-  BranchesOutlined,
+  TeamOutlined,
+  BankOutlined,
   BookOutlined,
   PictureOutlined,
   UserOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  SettingOutlined,
   LogoutOutlined,
 } from "@ant-design/icons"
 import Dashboard from "./pages/Dashboard"
+import Teachers from "./pages/Teachers"
 import Branches from "./pages/Branches"
 import Courses from "./pages/Courses"
 import Gallery from "./pages/Gallery"
-import Teachers from "./pages/Teachers"
+import Students from "./pages/Students"
 import Login from "./pages/Login"
-import LanguageSwitcher from "./components/LanguageSwitcher"
 
 const { Header, Sider, Content } = Layout
 
-const App = () => {
+export default function App() {
   const [collapsed, setCollapsed] = useState(false)
-  const location = useLocation()
-  const { t } = useTranslation()
-  const { logout, user, isLoading } = useAuth()
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken()
+  const [selectedKey, setSelectedKey] = useState("1")
+  const [loading, setLoading] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(true) // Set to false for login
 
-  const getSelectedKey = () => {
-    const path = location.pathname
-    switch (path) {
-      case "/":
-        return "1"
-      case "/branches":
-        return "2"
-      case "/courses":
-        return "3"
-      case "/gallery":
-        return "4"
-      case "/teachers":
-        return "5"
-      default:
-        return "1"
-    }
-  }
-
-  const userMenuItems = [
+  const menuItems = [
     {
-      key: "profile",
-      icon: <UserOutlined />,
-      label: "Profile",
+      key: "1",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
     },
     {
-      key: "settings",
-      icon: <SettingOutlined />,
-      label: "Settings",
+      key: "2",
+      icon: <TeamOutlined />,
+      label: "O'qituvchilar",
     },
     {
-      type: "divider",
+      key: "3",
+      icon: <BankOutlined />,
+      label: "Filiallar",
     },
     {
-      key: "logout",
-      icon: <LogoutOutlined />,
-      label: t("logout"),
-      danger: true,
-      onClick: logout,
+      key: "4",
+      icon: <BookOutlined />,
+      label: "Kurslar",
+    },
+    {
+      key: "5",
+      icon: <PictureOutlined />,
+      label: "Galereya",
+    },
+    {
+      key: "6",
+      label: "O'quvchilar",
     },
   ]
 
-  const getPageTitle = () => {
-    const path = location.pathname
-    switch (path) {
-      case "/":
-        return t("dashboard")
-      case "/branches":
-        return t("branches")
-      case "/courses":
-        return t("courses")
-      case "/gallery":
-        return t("gallery")
-      case "/teachers":
-        return t("teachers")
+  const renderContent = () => {
+    switch (selectedKey) {
+      case "1":
+        return <Dashboard />
+      case "2":
+        return <Teachers />
+      case "3":
+        return <Branches />
+      case "4":
+        return <Courses />
+      case "5":
+        return <Gallery />
+      case "6":
+        return <Students />
       default:
-        return t("dashboard")
+        return <Dashboard />
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    )
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />
   }
 
   return (
-    <Layout className="min-h-screen">
+    <Layout style={{ minHeight: "100vh" }}>
       <Sider
-        trigger={null}
         collapsible
         collapsed={collapsed}
-        breakpoint="lg"
-        collapsedWidth="0"
-        className="shadow-lg"
+        onCollapse={setCollapsed}
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
         }}
       >
-        <div className="flex items-center justify-center p-6 border-b border-white/10">
-          <div className="text-white text-center">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mb-2 mx-auto backdrop-blur-sm">
-              <span className="text-white font-bold text-lg">T</span>
-            </div>
-            {!collapsed && (
-              <div>
-                <div className="font-bold text-lg">TOM</div>
-                <div className="text-xs text-white/80">Admin Panel</div>
-              </div>
-            )}
+        <div
+          style={{
+            height: 64,
+            margin: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(255, 255, 255, 0.1)",
+            borderRadius: 8,
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              background: "linear-gradient(135deg, #16a34a 0%, #059669 100%)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: "bold",
+              fontSize: 18,
+            }}
+          >
+            T
           </div>
         </div>
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[getSelectedKey()]}
-          className="border-none bg-transparent"
-          style={{ background: "transparent" }}
-          items={[
-            {
-              key: "1",
-              icon: <DashboardOutlined className="text-lg" />,
-              label: (
-                <Link to="/" className="font-medium">
-                  {t("dashboard")}
-                </Link>
-              ),
-              className: "hover:bg-white/10 rounded-lg mx-2 my-1",
-            },
-            {
-              key: "2",
-              icon: <BranchesOutlined className="text-lg" />,
-              label: (
-                <Link to="/branches" className="font-medium">
-                  {t("branches")}
-                </Link>
-              ),
-              className: "hover:bg-white/10 rounded-lg mx-2 my-1",
-            },
-            {
-              key: "3",
-              icon: <BookOutlined className="text-lg" />,
-              label: (
-                <Link to="/courses" className="font-medium">
-                  {t("courses")}
-                </Link>
-              ),
-              className: "hover:bg-white/10 rounded-lg mx-2 my-1",
-            },
-            {
-              key: "4",
-              icon: <PictureOutlined className="text-lg" />,
-              label: (
-                <Link to="/gallery" className="font-medium">
-                  {t("gallery")}
-                </Link>
-              ),
-              className: "hover:bg-white/10 rounded-lg mx-2 my-1",
-            },
-            {
-              key: "5",
-              icon: <UserOutlined className="text-lg" />,
-              label: (
-                <Link to="/teachers" className="font-medium">
-                  {t("teachers")}
-                </Link>
-              ),
-              className: "hover:bg-white/10 rounded-lg mx-2 my-1",
-            },
-          ]}
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          onClick={({ key }) => setSelectedKey(key)}
+          style={{
+            background: "transparent",
+            border: "none",
+          }}
         />
       </Sider>
       <Layout>
         <Header
-          className="flex items-center justify-between px-6 shadow-sm border-b border-gray-100"
           style={{
             padding: "0 24px",
-            background: colorBgContainer,
-            height: "70px",
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <div className="flex items-center">
-            <button
-              className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              {collapsed ? (
-                <MenuUnfoldOutlined className="text-lg text-gray-600" />
-              ) : (
-                <MenuFoldOutlined className="text-lg text-gray-600" />
-              )}
-            </button>
-            <div className="ml-4">
-              <h1 className="text-xl font-semibold text-gray-800 m-0">{getPageTitle()}</h1>
-              <p className="text-sm text-gray-500 m-0">
-                {t("welcome")}, {user?.username || "Admin"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <LanguageSwitcher />
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
-                <Avatar
-                  size={40}
-                  style={{
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  }}
-                >
-                  {user?.username?.charAt(0).toUpperCase() || "A"}
-                </Avatar>
-                <div className="hidden md:block">
-                  <div className="text-sm font-medium text-gray-800">{user?.username || "Admin"}</div>
-                </div>
+          <h1
+            style={{
+              margin: 0,
+              color: "#16a34a",
+              fontSize: 24,
+              fontWeight: "bold",
+            }}
+          >
+            Tom Education
+          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  background: "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <UserOutlined style={{ color: "white" }} />
               </div>
-            </Dropdown>
+              <span style={{ color: "#374151" }}>Admin</span>
+            </div>
+            <LogoutOutlined
+              style={{
+                color: "#6b7280",
+                cursor: "pointer",
+                fontSize: 16,
+              }}
+              onClick={() => setIsAuthenticated(false)}
+            />
           </div>
         </Header>
         <Content
-          className="m-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100"
           style={{
-            minHeight: "calc(100vh - 134px)",
+            margin: 24,
+            padding: 24,
+            background: "#fff",
+            borderRadius: 8,
+            minHeight: 280,
+            position: "relative",
           }}
         >
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/branches" element={<Branches />} />
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="/teachers" element={<Teachers />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          {loading && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(255, 255, 255, 0.8)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+              }}
+            >
+              <Spin size="large" style={{ color: "#22c55e" }} />
+            </div>
+          )}
+          {renderContent()}
         </Content>
       </Layout>
     </Layout>
   )
 }
-
-export default App

@@ -1,92 +1,151 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Card, Table, Button, Form, Input, Modal, Upload, Space, Avatar, Tooltip, Tag, message, InputNumber } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, UserOutlined, PhoneOutlined, TrophyOutlined, BookOutlined, StarOutlined } from "@ant-design/icons";
-import { listTeachers, createTeacher, updateTeacher, deleteTeacher } from "../api/api";
+"use client"
+
+import { useState, useEffect } from "react"
+import {
+  Card,
+  Table,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Space,
+  Avatar,
+  Tooltip,
+  Tag,
+  message,
+  InputNumber,
+  Popconfirm,
+} from "antd"
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  TrophyOutlined,
+  BookOutlined,
+  StarOutlined,
+} from "@ant-design/icons"
 
 const Teachers = () => {
-  const { t, i18n } = useTranslation();
-  const [teachers, setTeachers] = useState([]); // Initialize as empty array
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState(null);
-  const [form] = Form.useForm();
+  const [teachers, setTeachers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTeacher, setEditingTeacher] = useState(null)
+  const [form] = Form.useForm()
 
   useEffect(() => {
-    fetchTeachers();
-  }, []);
+    fetchTeachers()
+  }, [])
 
   const fetchTeachers = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const data = await listTeachers();
-      // Ensure data is an array; if null or undefined, set to empty array
-      setTeachers(Array.isArray(data) ? data : []);
+      const response = await fetch("https://api.tom-education.uz/teachers/list")
+      const data = await response.json()
+
+      if (data.teacher) {
+        setTeachers(data.teacher)
+      }
     } catch (error) {
-      message.error(t("fetchError"));
-      setTeachers([]); // Set to empty array on error
+      console.error("O'qituvchilarni yuklashda xatolik:", error)
+      message.error("O'qituvchilarni yuklashda xatolik yuz berdi")
+      setTeachers([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSubmit = async (values) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const formData = new FormData();
-      formData.append("name", JSON.stringify(values.name));
-      formData.append("contact", values.contact);
-      formData.append("experience_years", values.experience_years);
-      formData.append("graduated_students", values.graduated_students);
-      formData.append("ielts_score", values.ielts_score);
-      if (values.file?.file) {
-        formData.append("file", values.file.file);
+      const teacherData = {
+        name: {
+          uz: values.name_uz,
+          en: values.name_en,
+          ru: values.name_ru,
+        },
+        contact: values.contact,
+        experience_years: values.experience_years.toString(),
+        graduated_students: values.graduated_students.toString(),
+        ielts_score: values.ielts_score.toString(),
+        profile_picture_url: values.profile_picture_url || "",
       }
 
       if (editingTeacher) {
-        await updateTeacher(editingTeacher.id, formData);
-        message.success(t("save"));
+        // Update teacher
+        const response = await fetch(`https://api.tom-education.uz/teachers/update?id=${editingTeacher.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(teacherData),
+        })
+
+        if (response.ok) {
+          message.success("O'qituvchi muvaffaqiyatli yangilandi")
+        }
       } else {
-        await createTeacher(formData);
-        message.success(t("addTeacher"));
+        // Create teacher
+        const response = await fetch("https://api.tom-education.uz/teachers/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(teacherData),
+        })
+
+        if (response.ok) {
+          message.success("O'qituvchi muvaffaqiyatli qo'shildi")
+        }
       }
-      fetchTeachers();
-      setIsModalOpen(false);
+
+      fetchTeachers()
+      setIsModalOpen(false)
+      setEditingTeacher(null)
+      form.resetFields()
     } catch (error) {
-      message.error(t("fetchError"));
+      console.error("O'qituvchini saqlashda xatolik:", error)
+      message.error("O'qituvchini saqlashda xatolik yuz berdi")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEdit = (teacher) => {
-    setEditingTeacher(teacher);
+    setEditingTeacher(teacher)
     form.setFieldsValue({
-      name: teacher.name,
+      name_uz: teacher.name?.uz,
+      name_en: teacher.name?.en,
+      name_ru: teacher.name?.ru,
       contact: teacher.contact,
-      experience_years: teacher.experience_years,
-      graduated_students: teacher.graduated_students,
-      ielts_score: teacher.ielts_score,
-    });
-    setIsModalOpen(true);
-  };
+      experience_years: Number.parseInt(teacher.experience_years),
+      graduated_students: Number.parseInt(teacher.graduated_students),
+      ielts_score: Number.parseFloat(teacher.ielts_score),
+      profile_picture_url: teacher.profile_picture_url,
+    })
+    setIsModalOpen(true)
+  }
 
   const handleDelete = async (id) => {
-    setLoading(true);
     try {
-      await deleteTeacher(id);
-      message.success(t("delete"));
-      fetchTeachers();
+      const response = await fetch(`https://api.tom-education.uz/teachers/delete?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        message.success("O'qituvchi muvaffaqiyatli o'chirildi")
+        fetchTeachers()
+      }
     } catch (error) {
-      message.error(t("fetchError"));
-    } finally {
-      setLoading(false);
+      console.error("O'qituvchini o'chirishda xatolik:", error)
+      message.error("O'qituvchini o'chirishda xatolik yuz berdi")
     }
-  };
+  }
 
   const columns = [
     {
-      title: t("teacherName"),
+      title: "O'qituvchi",
       key: "teacher",
       render: (_, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -95,13 +154,13 @@ const Teachers = () => {
             src={record.profile_picture_url}
             icon={<UserOutlined />}
             style={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
               border: "2px solid #f0f0f0",
             }}
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: "14px", color: "#262626" }}>
-              {record.name?.[i18n.language] || record.name?.en || "N/A"}
+              {record.name?.uz || record.name?.en || "N/A"}
             </div>
             <div style={{ fontSize: "12px", color: "#8c8c8c", display: "flex", alignItems: "center", gap: "4px" }}>
               <PhoneOutlined />
@@ -112,18 +171,18 @@ const Teachers = () => {
       ),
     },
     {
-      title: t("teacherExperience"),
+      title: "Tajriba",
       dataIndex: "experience_years",
       key: "experience_years",
       render: (years) => (
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <TrophyOutlined style={{ color: "#faad14" }} />
-          <span style={{ fontWeight: 500 }}>{years !== undefined ? `${years} ${t("years")}` : "N/A"}</span>
+          <span style={{ fontWeight: 500 }}>{years !== undefined ? `${years} yil` : "N/A"}</span>
         </div>
       ),
     },
     {
-      title: t("graduatedStudents"),
+      title: "Bitirgan o'quvchilar",
       dataIndex: "graduated_students",
       key: "graduated_students",
       render: (students) => (
@@ -134,73 +193,84 @@ const Teachers = () => {
       ),
     },
     {
-      title: t("ieltsScore"),
+      title: "IELTS Ball",
       dataIndex: "ielts_score",
       key: "ielts_score",
-      render: (score) => (
-        <Tag
-          color={score >= 8 ? "green" : score >= 7 ? "blue" : score >= 6 ? "orange" : "red"}
-          style={{
-            fontWeight: 600,
-            fontSize: "12px",
-            padding: "4px 8px",
-            borderRadius: "6px",
-          }}
-        >
-          <StarOutlined /> {score !== undefined ? score : "N/A"}
-        </Tag>
-      ),
+      render: (score) => {
+        const numScore = Number.parseFloat(score)
+        return (
+          <Tag
+            color={numScore >= 8 ? "green" : numScore >= 7 ? "blue" : numScore >= 6 ? "orange" : "red"}
+            style={{
+              fontWeight: 600,
+              fontSize: "12px",
+              padding: "4px 8px",
+              borderRadius: "6px",
+            }}
+          >
+            <StarOutlined /> {score !== undefined ? score : "N/A"}
+          </Tag>
+        )
+      },
     },
     {
-      title: t("createdDate"),
+      title: "Yaratilgan sana",
       dataIndex: "created_at",
       key: "created_at",
       render: (date) => (
         <span style={{ color: "#8c8c8c", fontSize: "12px" }}>
-          {date ? new Date(date).toLocaleDateString(i18n.language) : "N/A"}
+          {date ? new Date(date).toLocaleDateString("uz-UZ") : "N/A"}
         </span>
       ),
     },
     {
-      title: t("actions"),
+      title: "Amallar",
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Tooltip title={t("edit")}>
+          <Tooltip title="Tahrirlash">
             <Button
               type="text"
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
               style={{
-                color: "#1890ff",
+                color: "#22c55e",
                 border: "1px solid #d9d9d9",
                 borderRadius: "6px",
               }}
             />
           </Tooltip>
-          <Tooltip title={t("delete")}>
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-              style={{
-                border: "1px solid #d9d9d9",
-                borderRadius: "6px",
-              }}
-            />
-          </Tooltip>
+          <Popconfirm
+            title="O'qituvchini o'chirish"
+            description="Haqiqatan ham bu o'qituvchini o'chirmoqchimisiz?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Ha"
+            cancelText="Yo'q"
+            okButtonProps={{ style: { background: "#dc2626", borderColor: "#dc2626" } }}
+          >
+            <Tooltip title="O'chirish">
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                style={{
+                  border: "1px solid #d9d9d9",
+                  borderRadius: "6px",
+                }}
+              />
+            </Tooltip>
+          </Popconfirm>
         </Space>
       ),
     },
-  ];
+  ]
 
   return (
     <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
       <Card
         style={{
           marginBottom: "24px",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
           border: "none",
           borderRadius: "12px",
         }}
@@ -216,7 +286,7 @@ const Teachers = () => {
                 textShadow: "0 2px 4px rgba(0,0,0,0.1)",
               }}
             >
-              {t("teachersTitle")}
+              O'qituvchilar
             </h1>
             <p
               style={{
@@ -225,7 +295,7 @@ const Teachers = () => {
                 fontSize: "16px",
               }}
             >
-              {t("teachersTitle")}
+              O'qituvchilarni boshqarish
             </p>
           </div>
           <Button
@@ -233,9 +303,9 @@ const Teachers = () => {
             size="large"
             icon={<PlusOutlined />}
             onClick={() => {
-              setEditingTeacher(null);
-              form.resetFields();
-              setIsModalOpen(true);
+              setEditingTeacher(null)
+              form.resetFields()
+              setIsModalOpen(true)
             }}
             style={{
               background: "rgba(255,255,255,0.2)",
@@ -247,7 +317,7 @@ const Teachers = () => {
               backdropFilter: "blur(10px)",
             }}
           >
-            {t("addTeacher")}
+            Yangi o'qituvchi
           </Button>
         </div>
       </Card>
@@ -268,10 +338,10 @@ const Teachers = () => {
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} ${t("teachers")}`,
+            showTotal: (total, range) => `${range[0]}-${range[1]} dan ${total} ta o'qituvchi`,
           }}
           locale={{
-            emptyText: t("noData"), // Custom message for empty table
+            emptyText: "Ma'lumot topilmadi",
           }}
           style={{
             background: "white",
@@ -290,119 +360,99 @@ const Teachers = () => {
               padding: "8px 0",
             }}
           >
-            {editingTeacher ? t("edit") + " " + t("teacherName") : t("addTeacher")}
+            {editingTeacher ? "O'qituvchini tahrirlash" : "Yangi o'qituvchi qo'shish"}
           </div>
         }
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false)
+          setEditingTeacher(null)
+          form.resetFields()
+        }}
         footer={null}
         width={600}
         style={{ top: 20 }}
       >
-        <Form
-          form={form}
-          onFinish={handleSubmit}
-          layout="vertical"
-          style={{ marginTop: "24px" }}
-        >
+        <Form form={form} onFinish={handleSubmit} layout="vertical" style={{ marginTop: "24px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <Form.Item
-              name={["name", "en"]}
-              label={t("teacherName") + " (English)"}
-              rules={[{ required: true, message: t("teacherName") + " (English) is required" }]}
+              name="name_en"
+              label="Ism (Inglizcha)"
+              rules={[{ required: true, message: "Ism (Inglizcha) kiritish majburiy!" }]}
             >
-              <Input placeholder={t("teacherName") + " (English)"} style={{ borderRadius: "6px" }} />
+              <Input placeholder="Ism (Inglizcha)" style={{ borderRadius: "6px" }} />
             </Form.Item>
             <Form.Item
-              name={["name", "ru"]}
-              label={t("teacherName") + " (Russian)"}
-              rules={[{ required: true, message: t("teacherName") + " (Russian) is required" }]}
+              name="name_ru"
+              label="Ism (Ruscha)"
+              rules={[{ required: true, message: "Ism (Ruscha) kiritish majburiy!" }]}
             >
-              <Input placeholder={t("teacherName") + " (Russian)"} style={{ borderRadius: "6px" }} />
+              <Input placeholder="Ism (Ruscha)" style={{ borderRadius: "6px" }} />
             </Form.Item>
           </div>
 
           <Form.Item
-            name={["name", "uz"]}
-            label={t("teacherName") + " (Uzbek)"}
-            rules={[{ required: true, message: t("teacherName") + " (Uzbek) is required" }]}
+            name="name_uz"
+            label="Ism (O'zbekcha)"
+            rules={[{ required: true, message: "Ism (O'zbekcha) kiritish majburiy!" }]}
           >
-            <Input placeholder={t("teacherName") + " (Uzbek)"} style={{ borderRadius: "6px" }} />
+            <Input placeholder="Ism (O'zbekcha)" style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <Form.Item
               name="contact"
-              label={t("teacherPhone")}
-              rules={[{ required: true, message: t("teacherPhone") + " is required" }]}
+              label="Telefon raqam"
+              rules={[{ required: true, message: "Telefon raqam kiritish majburiy!" }]}
             >
-              <Input placeholder={t("teacherPhone")} style={{ borderRadius: "6px" }} />
+              <Input placeholder="Telefon raqam" style={{ borderRadius: "6px" }} />
             </Form.Item>
             <Form.Item
               name="experience_years"
-              label={t("teacherExperience")}
-              rules={[{ required: true, message: t("teacherExperience") + " is required" }]}
+              label="Tajriba (yil)"
+              rules={[{ required: true, message: "Tajriba kiritish majburiy!" }]}
             >
-              <InputNumber
-                min={0}
-                placeholder={t("teacherExperience")}
-                style={{ width: "100%", borderRadius: "6px" }}
-              />
+              <InputNumber min={0} placeholder="Tajriba (yil)" style={{ width: "100%", borderRadius: "6px" }} />
             </Form.Item>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <Form.Item
               name="graduated_students"
-              label={t("graduatedStudents")}
-              rules={[{ required: true, message: t("graduatedStudents") + " is required" }]}
+              label="Bitirgan o'quvchilar"
+              rules={[{ required: true, message: "Bitirgan o'quvchilar soni kiritish majburiy!" }]}
             >
-              <InputNumber
-                min={0}
-                placeholder={t("graduatedStudents")}
-                style={{ width: "100%", borderRadius: "6px" }}
-              />
+              <InputNumber min={0} placeholder="Bitirgan o'quvchilar" style={{ width: "100%", borderRadius: "6px" }} />
             </Form.Item>
             <Form.Item
               name="ielts_score"
-              label={t("ieltsScore")}
-              rules={[{ required: true, message: t("ieltsScore") + " is required" }]}
+              label="IELTS Ball"
+              rules={[{ required: true, message: "IELTS ball kiritish majburiy!" }]}
             >
               <InputNumber
                 min={0}
                 max={9}
                 step={0.5}
-                placeholder={t("ieltsScore")}
+                placeholder="IELTS Ball"
                 style={{ width: "100%", borderRadius: "6px" }}
               />
             </Form.Item>
           </div>
 
-          <Form.Item
-            name="file"
-            label={t("uploadImage")}
-            valuePropName="file"
-            rules={[{ required: !editingTeacher, message: t("uploadImage") + " is required" }]}
-          >
-            <Upload
-              name="file"
-              listType="picture-card"
-              maxCount={1}
-              style={{ width: "100%" }}
-            >
-              <div style={{ textAlign: "center", padding: "20px" }}>
-                <UploadOutlined style={{ fontSize: "24px", color: "#1890ff", marginBottom: "8px" }} />
-                <div>{t("uploadImage")}</div>
-              </div>
-            </Upload>
+          <Form.Item name="profile_picture_url" label="Profil rasm URL">
+            <Input placeholder="Profil rasm URL (ixtiyoriy)" style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
             <Button
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => {
+                setIsModalOpen(false)
+                setEditingTeacher(null)
+                form.resetFields()
+              }}
               style={{ borderRadius: "6px", height: "40px" }}
             >
-              {t("cancel")}
+              Bekor qilish
             </Button>
             <Button
               type="primary"
@@ -411,17 +461,17 @@ const Teachers = () => {
               style={{
                 borderRadius: "6px",
                 height: "40px",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
                 border: "none",
               }}
             >
-              {editingTeacher ? t("save") : t("addTeacher")}
+              {editingTeacher ? "Yangilash" : "Qo'shish"}
             </Button>
           </div>
         </Form>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default Teachers;
+export default Teachers

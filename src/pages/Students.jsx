@@ -1,0 +1,397 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Card, Avatar, Tag, InputNumber } from "antd"
+import { PlusOutlined, EditOutlined, DeleteOutlined, TrophyOutlined } from "@ant-design/icons"
+
+
+export default function Students() {
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [editingStudent, setEditingStudent] = useState(null)
+  const [form] = Form.useForm()
+
+  useEffect(() => {
+    fetchStudents()
+  }, [])
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("https://api.tom-education.uz/certificates/list")
+      const data = await response.json()
+
+      if (data.certificates) {
+        setStudents(data.certificates)
+      }
+    } catch (error) {
+      console.error("O'quvchilarni yuklashda xatolik:", error)
+      message.error("O'quvchilarni yuklashda xatolik yuz berdi")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (values) => {
+    try {
+      const studentData = {
+        name: {
+          uz: values.name_uz,
+          en: values.name_en,
+          ru: values.name_ru,
+        },
+        cefr_level: values.cefr_level,
+        ielts_score: values.ielts_score,
+        certificate_url: values.certificate_url || "",
+      }
+
+      if (editingStudent) {
+        // Update student
+        const response = await fetch(`https://api.tom-education.uz/certificates/update?id=${editingStudent.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(studentData),
+        })
+
+        if (response.ok) {
+          message.success("O'quvchi muvaffaqiyatli yangilandi")
+        }
+      } else {
+        // Create student
+        const response = await fetch("https://api.tom-education.uz/certificates/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(studentData),
+        })
+
+        if (response.ok) {
+          message.success("O'quvchi muvaffaqiyatli qo'shildi")
+        }
+      }
+
+      setModalVisible(false)
+      setEditingStudent(null)
+      form.resetFields()
+      fetchStudents()
+    } catch (error) {
+      console.error("O'quvchini saqlashda xatolik:", error)
+      message.error("O'quvchini saqlashda xatolik yuz berdi")
+    }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`https://api.tom-education.uz/certificates/delete?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        message.success("O'quvchi muvaffaqiyatli o'chirildi")
+        fetchStudents()
+      }
+    } catch (error) {
+      console.error("O'quvchini o'chirishda xatolik:", error)
+      message.error("O'quvchini o'chirishda xatolik yuz berdi")
+    }
+  }
+
+  const openModal = (student) => {
+    if (student) {
+      setEditingStudent(student)
+      form.setFieldsValue({
+        name_uz: student.name.uz,
+        name_en: student.name.en,
+        name_ru: student.name.ru,
+        cefr_level: student.cefr_level,
+        ielts_score: Number.parseFloat(student.ielts_score),
+        certificate_url: student.certificate_url,
+      })
+    } else {
+      setEditingStudent(null)
+      form.resetFields()
+    }
+    setModalVisible(true)
+  }
+
+  const getCEFRColor = (level) => {
+    const colors = {
+      A1: "#f59e0b",
+      A2: "#eab308",
+      B1: "#22c55e",
+      B2: "#16a34a",
+      C1: "#059669",
+      C2: "#047857",
+    }
+    return colors[level] || "#6b7280"
+  }
+
+  const getIELTSColor = (score) => {
+    if (score >= 8.5) return "#047857"
+    if (score >= 7.5) return "#059669"
+    if (score >= 6.5) return "#16a34a"
+    if (score >= 5.5) return "#22c55e"
+    return "#f59e0b"
+  }
+
+  const columns = [
+    {
+      title: "O'quvchi",
+      dataIndex: ["name", "uz"],
+      key: "name_uz",
+      render: (text, record) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Avatar
+            size={40}
+            style={{
+              background: "linear-gradient(135deg, #22c55e 0%, #059669 100%)",
+              color: "white",
+              fontWeight: "bold",
+            }}
+          >
+            {text.charAt(0).toUpperCase()}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 500, color: "#374151" }}>{text}</div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>{record.name.en}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "CEFR Daraja",
+      dataIndex: "cefr_level",
+      key: "cefr_level",
+      render: (level) => (
+        <Tag
+          color={getCEFRColor(level)}
+          style={{
+            borderRadius: 12,
+            fontWeight: "bold",
+            fontSize: 12,
+            padding: "4px 12px",
+          }}
+        >
+          {level}
+        </Tag>
+      ),
+    },
+    {
+      title: "IELTS Ball",
+      dataIndex: "ielts_score",
+      key: "ielts_score",
+      render: (score) => {
+        const numScore = Number.parseFloat(score)
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <TrophyOutlined style={{ color: getIELTSColor(numScore) }} />
+            <Tag
+              color={getIELTSColor(numScore)}
+              style={{
+                borderRadius: 12,
+                fontWeight: "bold",
+                fontSize: 12,
+                padding: "4px 12px",
+              }}
+            >
+              {score}
+            </Tag>
+          </div>
+        )
+      },
+    },
+    {
+      title: "Sertifikat",
+      dataIndex: "certificate_url",
+      key: "certificate_url",
+      render: (url) =>
+        url ? (
+          <Button
+            type="link"
+            onClick={() => window.open(url, "_blank")}
+            style={{ color: "#22c55e", padding: 0 }}
+          >
+            Ko'rish
+          </Button>
+        ) : (
+          <span style={{ color: "#9ca3af" }}>Mavjud emas</span>
+        ),
+    },
+    {
+      title: "Sana",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (date) => (
+        <span style={{ color: "#6b7280", fontSize: 12 }}>{new Date(date).toLocaleDateString("uz-UZ")}</span>
+      ),
+    },
+    {
+      title: "Amallar",
+      key: "actions",
+      render: (_, record) => (
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            type="primary"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => openModal(record)}
+            style={{
+              background: "#22c55e",
+              borderColor: "#22c55e",
+            }}
+          />
+          <Popconfirm
+            title="O'quvchini o'chirish"
+            description="Haqiqatan ham bu o'quvchini o'chirmoqchimisiz?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Ha"
+            cancelText="Yo'q"
+            okButtonProps={{ style: { background: "#dc2626", borderColor: "#dc2626" } }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </div>
+      ),
+    },
+  ]
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            color: "#16a34a",
+            fontSize: 28,
+            fontWeight: "bold",
+          }}
+        >
+          O'quvchilar
+        </h2>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => openModal()}
+          style={{
+            background: "#22c55e",
+            borderColor: "#22c55e",
+            borderRadius: 8,
+          }}
+        >
+          Yangi o'quvchi
+        </Button>
+      </div>
+
+      <Card style={{ borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+        <Table
+          columns={columns}
+          dataSource={students}
+          loading={loading}
+          rowKey="id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `Jami ${total} ta o'quvchi`,
+          }}
+        />
+      </Card>
+
+      <Modal
+        title={
+          <span style={{ color: "#16a34a", fontSize: 18, fontWeight: "bold" }}>
+            {editingStudent ? "O'quvchini tahrirlash" : "Yangi o'quvchi qo'shish"}
+          </span>
+        }
+        open={modalVisible}
+        onCancel={() => {
+          setModalVisible(false)
+          setEditingStudent(null)
+          form.resetFields()
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ marginTop: 20 }}>
+          <Form.Item
+            name="name_uz"
+            label="Ism (O'zbekcha)"
+            rules={[{ required: true, message: "Ism (O'zbekcha) kiritish majburiy!" }]}
+          >
+            <Input placeholder="Ism (O'zbekcha)" />
+          </Form.Item>
+
+          <Form.Item
+            name="name_en"
+            label="Ism (Inglizcha)"
+            rules={[{ required: true, message: "Ism (Inglizcha) kiritish majburiy!" }]}
+          >
+            <Input placeholder="Ism (Inglizcha)" />
+          </Form.Item>
+
+          <Form.Item
+            name="name_ru"
+            label="Ism (Ruscha)"
+            rules={[{ required: true, message: "Ism (Ruscha) kiritish majburiy!" }]}
+          >
+            <Input placeholder="Ism (Ruscha)" />
+          </Form.Item>
+
+          <Form.Item
+            name="cefr_level"
+            label="CEFR Daraja"
+            rules={[{ required: true, message: "CEFR daraja kiritish majburiy!" }]}
+          >
+            <Input placeholder="A1, A2, B1, B2, C1, C2" />
+          </Form.Item>
+
+          <Form.Item
+            name="ielts_score"
+            label="IELTS Ball"
+            rules={[{ required: true, message: "IELTS ball kiritish majburiy!" }]}
+          >
+            <InputNumber placeholder="IELTS ball" min={0} max={9} step={0.5} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item name="certificate_url" label="Sertifikat URL">
+            <Input placeholder="Sertifikat URL (ixtiyoriy)" />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+            <Button
+              onClick={() => {
+                setModalVisible(false)
+                setEditingStudent(null)
+                form.resetFields()
+              }}
+              style={{ marginRight: 8 }}
+            >
+              Bekor qilish
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              style={{
+                background: "#22c55e",
+                borderColor: "#22c55e",
+              }}
+            >
+              {editingStudent ? "Yangilash" : "Qo'shish"}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}

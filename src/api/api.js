@@ -24,7 +24,7 @@ export const createCourse = (data) => axios.post(`${API_BASE}/courses/create`, d
 export const getCourse = (id) => axios.get(`${API_BASE}/courses/get?id=${id}`);
 export const updateCourse = (id, data) => axios.put(`${API_BASE}/courses/update?id=${id}`, data);
 export const deleteCourse = (id) => axios.delete(`${API_BASE}/courses/delete?id=${id}`);
-export const listCourses = (type) => axios.get(`${API_BASE}/courses/list${type ? `?type=${type}` : ''}`);
+export const listCourses = () => axios.get(`${API_BASE}/courses/list}`);
 
 // Gallery API
 export const createGallery = (data) => axios.post(`${API_BASE}/gallery/create`, data);

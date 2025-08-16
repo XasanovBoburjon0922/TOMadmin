@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Card, Row, Col, Statistic, Progress, Avatar, Button, Space } from "antd";
+"use client"
+
+import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
+import { Card, Row, Col, Statistic, Progress, Avatar } from "antd"
 import {
   BookOutlined,
   BranchesOutlined,
@@ -10,43 +12,70 @@ import {
   TeamOutlined,
   TrophyOutlined,
   RiseOutlined,
-} from "@ant-design/icons";
-// import { getDashboardStats } from "../api/api";
+} from "@ant-design/icons"
 
 const Dashboard = () => {
-  const { t } = useTranslation();
-  const [stats, setStats] = useState({ branches: 0, courses: 0, galleries: 0, teachers: 0 });
-  const [loading, setLoading] = useState(false);
+  const { t } = useTranslation()
+  const [stats, setStats] = useState({
+    branches: 0,
+    courses: 0,
+    galleries: 0,
+    teachers: 0,
+    students: 0,
+  })
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetchDashboardStats()
+  }, [])
+
+  const fetchDashboardStats = async () => {
+    setLoading(true)
+    try {
+      const [branchesRes, coursesRes, galleriesRes, teachersRes, studentsRes] = await Promise.all([
+        fetch("https://api.tom-education.uz/branches/list"),
+        fetch("https://api.tom-education.uz/courses/list"),
+        fetch("https://api.tom-education.uz/gallery/list"),
+        fetch("https://api.tom-education.uz/teachers/list"),
+        fetch("https://api.tom-education.uz/certificates/list"),
+      ])
+
+      const [branches, courses, galleries, teachers, students] = await Promise.all([
+        branchesRes.json(),
+        coursesRes.json(),
+        galleriesRes.json(),
+        teachersRes.json(),
+        studentsRes.json(),
+      ])
+
+      setStats({
+        branches: branches.total_count || branches.branches?.length || 0,
+        courses: courses.total_count || courses.courses?.length || 0,
+        galleries: galleries.total_count || galleries.galleries?.length || 0,
+        teachers: teachers.total_count || teachers.teacher?.length || 0,
+        students: students.total_count || students.certificates?.length || 0,
+      })
+    } catch (error) {
+      console.error("Dashboard ma'lumotlarini yuklashda xatolik:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const recentActivities = [
-    { avatar: "C", action: "New course added", user: "Admin", time: "2 hours ago" },
-    { avatar: "T", action: "Teacher profile updated", user: "Admin", time: "5 hours ago" },
-    { avatar: "G", action: "Gallery image uploaded", user: "Admin", time: "1 day ago" },
-    { avatar: "B", action: "Branch information modified", user: "Admin", time: "2 days ago" },
-  ];
-
-  // useEffect(() => {
-  //   const fetchStats = async () => {
-  //     setLoading(true);
-  //     try {
-  //       const data = await getDashboardStats();
-  //       setStats(data);
-  //     } catch (error) {
-  //       message.error(t("fetchError"));
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   fetchStats();
-  // }, []);
+    { avatar: "C", action: "Yangi kurs qo'shildi", user: "Admin", time: "2 soat oldin" },
+    { avatar: "T", action: "O'qituvchi profili yangilandi", user: "Admin", time: "5 soat oldin" },
+    { avatar: "G", action: "Galereya rasmi yuklandi", user: "Admin", time: "1 kun oldin" },
+    { avatar: "B", action: "Filial ma'lumotlari o'zgartirildi", user: "Admin", time: "2 kun oldin" },
+  ]
 
   const statsCards = [
     {
       title: t("totalBranches"),
       value: stats.branches,
       icon: <BranchesOutlined />,
-      color: "#667eea",
-      bgColor: "#f0f2ff",
+      color: "#22c55e",
+      bgColor: "#f0fdf4",
       change: "+12%",
       changeType: "increase",
     },
@@ -54,8 +83,8 @@ const Dashboard = () => {
       title: t("totalCourses"),
       value: stats.courses,
       icon: <BookOutlined />,
-      color: "#f093fb",
-      bgColor: "#fef7ff",
+      color: "#16a34a",
+      bgColor: "#f0fdf4",
       change: "+8%",
       changeType: "increase",
     },
@@ -63,8 +92,8 @@ const Dashboard = () => {
       title: t("gallery"),
       value: stats.galleries,
       icon: <PictureOutlined />,
-      color: "#4facfe",
-      bgColor: "#f0faff",
+      color: "#15803d",
+      bgColor: "#f0fdf4",
       change: "+24%",
       changeType: "increase",
     },
@@ -72,20 +101,29 @@ const Dashboard = () => {
       title: t("totalTeachers"),
       value: stats.teachers,
       icon: <UserOutlined />,
-      color: "#43e97b",
-      bgColor: "#f0fff4",
+      color: "#059669",
+      bgColor: "#f0fdf4",
       change: "+5%",
       changeType: "increase",
     },
-  ];
+    {
+      title: t("totalStudents"),
+      value: stats.students,
+      icon: <UserOutlined />,
+      color: "#059669",
+      bgColor: "#f0fdf4",
+      change: "+10%",
+      changeType: "increase",
+    },
+  ]
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white">
+      <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">{t("welcome")}</h1>
-            <p className="text-blue-100 text-lg">{t("welcome")}!</p>
+            <p className="text-green-100 text-lg">{t("welcome")}!</p>
           </div>
           <div className="hidden md:block">
             <TrophyOutlined className="text-6xl text-white/20" />
@@ -135,7 +173,7 @@ const Dashboard = () => {
           <Card
             title={
               <div className="flex items-center">
-                <StarOutlined className="mr-2 text-yellow-500" />
+                <StarOutlined className="mr-2 text-green-500" />
                 <span className="font-semibold">{t("performanceOverview")}</span>
               </div>
             }
@@ -145,23 +183,13 @@ const Dashboard = () => {
             <Row gutter={[16, 16]}>
               <Col span={12}>
                 <div className="text-center">
-                  <Progress
-                    type="circle"
-                    percent={85}
-                    strokeColor="#667eea"
-                    size={120}
-                  />
+                  <Progress type="circle" percent={85} strokeColor="#22c55e" size={120} />
                   <p className="mt-4 text-gray-600 font-medium">{t("courseCompletion")}</p>
                 </div>
               </Col>
               <Col span={12}>
                 <div className="text-center">
-                  <Progress
-                    type="circle"
-                    percent={92}
-                    strokeColor="#43e97b"
-                    size={120}
-                  />
+                  <Progress type="circle" percent={92} strokeColor="#16a34a" size={120} />
                   <p className="mt-4 text-gray-600 font-medium">{t("studentSatisfaction")}</p>
                 </div>
               </Col>
@@ -173,7 +201,7 @@ const Dashboard = () => {
           <Card
             title={
               <div className="flex items-center">
-                <TeamOutlined className="mr-2 text-blue-500" />
+                <TeamOutlined className="mr-2 text-green-500" />
                 <span className="font-semibold">{t("recentActivity")}</span>
               </div>
             }
@@ -186,7 +214,7 @@ const Dashboard = () => {
                   <Avatar
                     size={40}
                     style={{
-                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
                     }}
                   >
                     {activity.avatar}
@@ -218,8 +246,8 @@ const Dashboard = () => {
       >
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={6}>
-            <div className="text-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 cursor-pointer transition-colors duration-200">
-              <BookOutlined className="text-3xl text-blue-500 mb-2" />
+            <div className="text-center p-4 rounded-xl bg-green-50 hover:bg-green-100 cursor-pointer transition-colors duration-200">
+              <BookOutlined className="text-3xl text-green-500 mb-2" />
               <p className="font-medium text-gray-800">{t("addCourse")}</p>
             </div>
           </Col>
@@ -230,21 +258,21 @@ const Dashboard = () => {
             </div>
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <div className="text-center p-4 rounded-xl bg-purple-50 hover:bg-purple-100 cursor-pointer transition-colors duration-200">
-              <BranchesOutlined className="text-3xl text-purple-500 mb-2" />
+            <div className="text-center p-4 rounded-xl bg-green-50 hover:bg-green-100 cursor-pointer transition-colors duration-200">
+              <BranchesOutlined className="text-3xl text-green-500 mb-2" />
               <p className="font-medium text-gray-800">{t("addBranch")}</p>
             </div>
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <div className="text-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 cursor-pointer transition-colors duration-200">
-              <PictureOutlined className="text-3xl text-orange-500 mb-2" />
+            <div className="text-center p-4 rounded-xl bg-green-50 hover:bg-green-100 cursor-pointer transition-colors duration-200">
+              <PictureOutlined className="text-3xl text-green-500 mb-2" />
               <p className="font-medium text-gray-800">{t("addImage")}</p>
             </div>
           </Col>
         </Row>
       </Card>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard
