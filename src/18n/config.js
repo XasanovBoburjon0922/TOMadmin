@@ -81,6 +81,7 @@ const resources = {
       uzbek: "Uzbek",
       russian: "Russian",
       noData: "No data available",
+      totalStudents: "Total students",
     },
   },
   uz: {
@@ -105,6 +106,7 @@ const resources = {
       totalBranches: "Jami filiallar",
       totalCourses: "Jami kurslar",
       totalTeachers: "Jami o'qituvchilar",
+      totalStudents: "Jami o'quvchilar",
       vsLastMonth: "o'tgan oy bilan solishtirganda",
       performanceOverview: "Ish faoliyati haqida umumiy ma'lumot",
       courseCompletion: "Kursni yakunlash",
@@ -240,7 +242,8 @@ const resources = {
       english: "Английский",
       uzbek: "Узбекский",
       russian: "Русский",
-      noData: "Нет информации"
+      noData: "Нет информации",
+      totalStudents: "Всего студентов",
     },
   },
 };

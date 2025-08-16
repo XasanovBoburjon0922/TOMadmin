@@ -4,11 +4,11 @@ import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, Table, Button, Form, Modal, Upload, Row, Col, Empty, Image, message } from "antd"
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, EyeOutlined } from "@ant-design/icons"
-import { listGallery, createGallery, updateGallery, deleteGallery } from "../api/api"
+import { listGallery, createGallery, updateGallery, deleteGallery, uploadFile } from "../api/api"
 
 const Gallery = () => {
   const { t, i18n } = useTranslation()
-  const [galleries, setGalleries] = useState([]) // Initialize as empty array
+  const [galleries, setGalleries] = useState([])
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingGallery, setEditingGallery] = useState(null)
@@ -20,39 +20,56 @@ const Gallery = () => {
   }, [])
 
   const fetchGalleries = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await listGallery();
-      // Extract the galleries array from the response
-      const data = response?.data?.galleries || [];
-      setGalleries(Array.isArray(data) ? data : []);
+      const response = await listGallery()
+      const data = response?.data?.galleries || []
+      setGalleries(Array.isArray(data) ? data : [])
     } catch (error) {
-      message.error(t("fetchError"));
-      setGalleries([]);
+      console.error("Fetch galleries error:", error)
+      message.error(t("fetchError"))
+      setGalleries([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
-      const formData = new FormData()
-      if (values.file?.file) {
-        formData.append("file", values.file.file)
+      let pictureUrl = editingGallery?.picture_url // Keep existing URL for edits if no new file
+
+      if (values.file && values.file.fileList && values.file.fileList.length > 0) {
+        const fileObj = values.file.fileList[0]
+        const actualFile = fileObj.originFileObj || fileObj
+
+        console.log("[v0] Uploading file:", actualFile)
+        const uploadResponse = await uploadFile(actualFile)
+        console.log("[v0] Upload response:", uploadResponse)
+        pictureUrl = uploadResponse
+
+        if (!pictureUrl) {
+          throw new Error(t("fileUploadFailed"))
+        }
       }
 
+      // Step 2: Create or update gallery with picture_url
+      const galleryData = { picture_url: pictureUrl }
+      console.log("[v0] Gallery data:", galleryData)
+
       if (editingGallery) {
-        await updateGallery(editingGallery.id, formData)
+        await updateGallery(editingGallery.id, galleryData)
         message.success(t("save"))
       } else {
-        await createGallery(formData)
+        await createGallery(galleryData)
         message.success(t("addImage"))
       }
       fetchGalleries()
       setIsModalOpen(false)
+      form.resetFields()
     } catch (error) {
-      message.error(t("fetchError"))
+      console.error("Submit error:", error.response?.data || error.message)
+      message.error(error.message || t("fetchError"))
     } finally {
       setLoading(false)
     }
@@ -60,7 +77,7 @@ const Gallery = () => {
 
   const handleEdit = (gallery) => {
     setEditingGallery(gallery)
-    form.setFieldsValue({})
+    form.setFieldsValue({}) // Reset form for new file upload
     setIsModalOpen(true)
   }
 
@@ -71,6 +88,7 @@ const Gallery = () => {
       message.success(t("delete"))
       fetchGalleries()
     } catch (error) {
+      console.error("Delete error:", error)
       message.error(t("fetchError"))
     } finally {
       setLoading(false)
@@ -90,10 +108,8 @@ const Gallery = () => {
             width={64}
             height={64}
             className="object-cover"
-            preview={{
-              mask: <EyeOutlined className="text-white" />,
-            }}
-            fallback="/placeholder.svg" // Fallback for missing images
+            preview={{ mask: <EyeOutlined className="text-white" /> }}
+            fallback="/placeholder.svg"
           />
         </div>
       ),
@@ -118,18 +134,15 @@ const Gallery = () => {
       render: (_, record) => (
         <div className="flex space-x-2">
           <Button
+            key="edit"
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
             className="text-green-500 hover:text-green-700 hover:bg-green-50"
           />
-          <Button
-            type="text"
-            icon={<DeleteOutlined />}
-            danger
-            onClick={() => handleDelete(record.id)}
-            className="hover:bg-red-50"
-          />
+          <Button key="delete" type="text" icon={<DeleteOutlined />} danger onClick={() => handleDelete(record.id)}>
+            {t("delete")}
+          </Button>
         </div>
       ),
     },
@@ -153,10 +166,8 @@ const Gallery = () => {
                   <Image
                     src={item.picture_url || "/placeholder.svg"}
                     className="w-full h-full object-cover"
-                    preview={{
-                      mask: <EyeOutlined className="text-white text-xl" />,
-                    }}
-                    fallback="/placeholder.svg" // Fallback for missing images
+                    preview={{ mask: <EyeOutlined className="text-white text-xl" /> }}
+                    fallback="/placeholder.svg"
                   />
                 </div>
               }
@@ -241,15 +252,8 @@ const Gallery = () => {
             dataSource={galleries}
             rowKey="id"
             loading={loading}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} ${t("gallery")}`,
-            }}
-            locale={{
-              emptyText: t("noData"), // Custom message for empty table
-            }}
+            pagination={false}
+            locale={{ emptyText: t("noData") }}
             className="rounded-lg"
           />
         )}
@@ -276,13 +280,26 @@ const Gallery = () => {
           <Form.Item
             name="file"
             label={t("uploadImage")}
-            valuePropName="file"
             rules={[{ required: !editingGallery, message: t("uploadImage") + " is required" }]}
           >
             <Upload.Dragger
               name="file"
               listType="picture"
               maxCount={1}
+              accept="image/*"
+              beforeUpload={(file) => {
+                const isImage = file.type.startsWith("image/")
+                const isLt10M = file.size / 1024 / 1024 < 10 // Limit to 10MB
+                if (!isImage) {
+                  message.error(t("imageOnly"))
+                  return false
+                }
+                if (!isLt10M) {
+                  message.error(t("fileTooLarge"))
+                  return false
+                }
+                return false // Prevent auto upload, handle manually
+              }}
               className="rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400"
             >
               <p className="ant-upload-drag-icon">

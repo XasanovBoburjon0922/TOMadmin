@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -9,7 +10,6 @@ import {
   Form,
   Modal,
   Input,
-  Select,
   Tag,
   InputNumber,
   Upload,
@@ -22,13 +22,40 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
-  FilterOutlined,
   BookOutlined,
 } from "@ant-design/icons"
 import { listCourses, createCourse, updateCourse, deleteCourse } from "../api/api"
 
 const { Title } = Typography
 
+// API function for file upload with enhanced error handling
+const uploadFile = async (file) => {
+  const formData = new FormData()
+  formData.append("file", file)
+  try {
+    const response = await fetch("https://api.tom-education.uz/file-upload", {
+      method: "POST",
+      body: formData,
+    })
+    const data = await response.json()
+    if (response.status === 200) {
+      if (!data.Url) {
+        throw new Error("Response missing 'Url' field")
+      }
+      return data.Url
+    } else {
+      throw new Error(`File upload failed with status ${response.status}: ${JSON.stringify(data)}`)
+    }
+  } catch (error) {
+    console.error("Upload File Error:", {
+      message: error.message,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+    })
+    return "" // Fallback to empty string if upload fails
+  }
+}
 
 const Courses = () => {
   const { t, i18n } = useTranslation()
@@ -36,62 +63,18 @@ const Courses = () => {
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState(null)
-  const [filterType, setFilterType] = useState(null)
   const [form] = Form.useForm()
 
   useEffect(() => {
     fetchCourses()
-  }, [filterType])
+  }, [])
 
   const fetchCourses = async () => {
     setLoading(true)
     try {
-      // For testing, you can uncomment the mock data
-      /*
-      const mockData = {
-        courses: [
-          {
-            id: "1",
-            name: { en: "Web Development", ru: "Веб-разработка", uz: "Veb-dasturlash" },
-            branch_description: {
-              en: "Learn web development",
-              ru: "Изучите веб-разработку",
-              uz: "Veb-dasturlashni o'rganing",
-            },
-            duration: { en: "3 months", ru: "3 месяца", uz: "3 oy" },
-            description: ["Comprehensive course on web technologies"],
-            price: 299,
-            type: "type1",
-            picture_url: "https://example.com/image.jpg",
-            created_at: "2025-08-01T12:00:00Z",
-          },
-          {
-            id: "2",
-            name: { en: "Data Science", ru: "Наука о данных", uz: "Ma'lumotlar ilmi" },
-            branch_description: {
-              en: "Master data science",
-              ru: "Овладейте наукой о данных",
-              uz: "Ma'lumotlar ilmini o'rganing",
-            },
-            duration: { en: "6 months", ru: "6 месяцев", uz: "6 oy" },
-            description: ["Learn data analysis and ML"],
-            price: 499,
-            type: "type2",
-            picture_url: "https://example.com/image2.jpg",
-            created_at: "2025-07-15T10:00:00Z",
-          },
-        ],
-        total_count: 2,
-      }
-      const data = mockData.courses
-      */
       const response = await listCourses()
-      console.log("API Response:", response)
       const data = response?.data?.courses || []
-      const filteredCourses = filterType
-        ? data.filter((course) => course.type === filterType)
-        : data
-      setCourses(Array.isArray(filteredCourses) ? filteredCourses : [])
+      setCourses(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Fetch Error:", {
         message: error.message,
@@ -108,31 +91,95 @@ const Courses = () => {
 
   const handleSubmit = async (values) => {
     setLoading(true)
+    const descriptionArray = values.description.split("\n").filter(line => line.trim() !== "")
+
     try {
+      let response
+      let payload
+
+      // Try multipart/form-data first
       const formData = new FormData()
       formData.append("name", JSON.stringify(values.name))
       formData.append("branch_description", JSON.stringify(values.branch_description))
       formData.append("duration", JSON.stringify(values.duration))
-      formData.append("description", values.description)
-      formData.append("price", values.price.toString())
-      formData.append("type", values.type)
-      if (values.file?.file) {
-        formData.append("file", values.file.file)
+      formData.append("description", JSON.stringify(descriptionArray))
+      // Send price as a number directly
+      formData.append("price", parseFloat(values.price))
+      formData.append("type", values.type || "")
+
+      let pictureUrl = editingCourse?.picture_url || ""
+      if (values.file?.[0]?.originFileObj) {
+        pictureUrl = await uploadFile(values.file[0].originFileObj)
       }
+      formData.append("picture_url", pictureUrl)
 
       if (editingCourse) {
-        await updateCourse(editingCourse.id, formData)
-        message.success(t("save"))
+        response = await updateCourse(editingCourse.id, formData)
       } else {
-        await createCourse(formData)
-        message.success(t("addCourse"))
+        response = await createCourse(formData)
       }
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`)
+      }
+
+      message.success(editingCourse ? t("save") : t("addCourse"))
       fetchCourses()
       setIsModalOpen(false)
       form.resetFields()
     } catch (error) {
-      console.error("Submit Error:", error)
+      console.error("Submit Error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+        payload: {
+          name: values.name,
+          branch_description: values.branch_description,
+          duration: values.duration,
+          description: descriptionArray,
+          price: parseFloat(values.price),
+          type: values.type || "",
+          picture_url: values.file?.[0]?.originFileObj ? "file uploaded" : editingCourse?.picture_url || "",
+        },
+      })
       message.error(t("fetchError") + `: ${error.message}`)
+
+      // If multipart fails with 400, try JSON payload
+      if (error.response?.status === 400) {
+        try {
+          const jsonPayload = {
+            name: values.name,
+            branch_description: values.branch_description,
+            duration: values.duration,
+            description: descriptionArray,
+            price: parseFloat(values.price),
+            type: values.type || "",
+            picture_url: pictureUrl,
+          }
+          const jsonResponse = await fetch(editingCourse ? `/courses/${editingCourse.id}` : "/courses", {
+            method: editingCourse ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Add Authorization if needed: "Authorization": `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify(jsonPayload),
+          })
+          if (!jsonResponse.ok) throw new Error(`JSON request failed with status ${jsonResponse.status}`)
+          message.success(editingCourse ? t("save") : t("addCourse"))
+          fetchCourses()
+          setIsModalOpen(false)
+          form.resetFields()
+        } catch (jsonError) {
+          console.error("JSON Submit Error:", {
+            message: jsonError.message,
+            status: jsonError.response?.status,
+            data: jsonError.response?.data,
+            payload: jsonPayload,
+          })
+          message.error(t("fetchError") + `: ${jsonError.message}`)
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -147,6 +194,7 @@ const Courses = () => {
       description: course.description.join("\n"),
       price: course.price,
       type: course.type,
+      file: course.picture_url ? [{ url: course.picture_url, status: "done" }] : [],
     })
     setIsModalOpen(true)
   }
@@ -158,7 +206,12 @@ const Courses = () => {
       message.success(t("delete"))
       fetchCourses()
     } catch (error) {
-      console.error("Delete Error:", error)
+      console.error("Delete Error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+      })
       message.error(t("fetchError") + `: ${error.message}`)
     } finally {
       setLoading(false)
@@ -166,14 +219,11 @@ const Courses = () => {
   }
 
   const getTypeColor = (type) => {
-    switch (type) {
-      case "type1":
-        return "green"
-      case "type2":
-        return "emerald"
-      default:
-        return "default"
+    const typeColors = {
+      gramatika: "green",
+      ielts: "blue",
     }
+    return typeColors[type?.toLowerCase()] || "default"
   }
 
   const columns = [
@@ -194,7 +244,7 @@ const Courses = () => {
       key: "type",
       render: (type) => (
         <Tag color={getTypeColor(type)} className="rounded-full px-3 py-1">
-          {t(`type${type === "type1" ? "1" : "2"}`)}
+          {type || "N/A"}
         </Tag>
       ),
     },
@@ -204,7 +254,7 @@ const Courses = () => {
       key: "price",
       render: (price) => (
         <span className="font-semibold text-green-600">
-          ${price?.toLocaleString() || "0"}
+          {price?.toLocaleString() || "0"} so'm
         </span>
       ),
     },
@@ -273,16 +323,6 @@ const Courses = () => {
           <p className="text-gray-600">{t("coursesTitle")}</p>
         </div>
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-          <Select
-            placeholder={t("filterByType")}
-            allowClear
-            onChange={(value) => setFilterType(value)}
-            className="w-full sm:w-48"
-            suffixIcon={<FilterOutlined />}
-          >
-            <Select.Option value="type1">{t("type1")}</Select.Option>
-            <Select.Option value="type2">{t("type2")}</Select.Option>
-          </Select>
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -432,25 +472,29 @@ const Courses = () => {
                 label={t("courseDescription")}
                 rules={[{ required: true, message: t("courseDescription") + " is required" }]}
               >
-                <Input.TextArea rows={4} placeholder={t("courseDescription")} className="rounded-lg" />
+                <Input.TextArea
+                  rows={4}
+                  placeholder={t("courseDescription") + " (enter each point on a new line)"}
+                  className="rounded-lg"
+                />
               </Form.Item>
               <div className="space-y-4">
                 <Form.Item
                   name="price"
                   label={t("coursePrice")}
-                  rules={[{ required: true, message: t("coursePrice") + " is required" }]}
+                  rules={[
+                    { required: true, message: t("coursePrice") + " is required" },
+                    { type: "number", min: 0, message: t("coursePrice") + " must be non-negative" },
+                  ]}
                 >
                   <InputNumber min={0} className="w-full rounded-lg" placeholder={t("coursePrice")} />
                 </Form.Item>
                 <Form.Item
                   name="type"
                   label={t("courseType")}
-                  rules={[{ required: true, message: t("courseType") + " is required" }]}
+                  rules={[{ required: false, message: t("courseType") + " is optional" }]}
                 >
-                  <Select placeholder={t("courseType")} className="rounded-lg">
-                    <Select.Option value="type1">{t("type1")}</Select.Option>
-                    <Select.Option value="type2">{t("type2")}</Select.Option>
-                  </Select>
+                  <Input placeholder={t("courseType") + " (e.g., gramatika, ielts)"} className="rounded-lg" />
                 </Form.Item>
               </div>
             </div>
@@ -460,12 +504,37 @@ const Courses = () => {
             <Title level={5} className="text-gray-700 mb-4">
               {t("uploadImage")}
             </Title>
-            <Form.Item name="file" label={t("uploadImage")} valuePropName="file">
+            <Form.Item
+              name="file"
+              label={t("uploadImage")}
+              valuePropName="fileList"
+              getValueFromEvent={(e) => (Array.isArray(e) ? e : e && e.fileList)}
+              rules={[
+                {
+                  validator: (_, fileList) => {
+                    if (fileList && fileList.length > 0) {
+                      const file = fileList[0].originFileObj
+                      const isImage = file.type.startsWith("image/")
+                      const isLt2M = file.size / 1024 / 1024 < 2 // 2MB limit
+                      if (!isImage) {
+                        return Promise.reject(new Error(t("uploadImageError")))
+                      }
+                      if (!isLt2M) {
+                        return Promise.reject(new Error(t("fileTooLarge")))
+                      }
+                    }
+                    return Promise.resolve()
+                  },
+                },
+              ]}
+            >
               <Upload.Dragger
                 name="file"
                 listType="picture"
                 maxCount={1}
                 className="rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400"
+                beforeUpload={() => false}
+                accept="image/*"
               >
                 <p className="ant-upload-drag-icon">
                   <UploadOutlined className="text-4xl text-gray-400" />

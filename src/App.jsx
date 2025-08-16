@@ -10,6 +10,7 @@ import {
   PictureOutlined,
   UserOutlined,
   LogoutOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons"
 import Dashboard from "./pages/Dashboard"
 import Teachers from "./pages/Teachers"
@@ -18,6 +19,7 @@ import Courses from "./pages/Courses"
 import Gallery from "./pages/Gallery"
 import Students from "./pages/Students"
 import Login from "./pages/Login"
+import CourseApplications from "./pages/Application"
 
 const { Header, Sider, Content } = Layout
 
@@ -55,7 +57,13 @@ export default function App() {
     },
     {
       key: "6",
+      icon: <UserOutlined />,
       label: "O'quvchilar",
+    },
+    {
+      key: "7",
+      icon: <FileTextOutlined />,
+      label: "Kurs Arizalari",
     },
   ]
 
@@ -73,6 +81,8 @@ export default function App() {
         return <Gallery />
       case "6":
         return <Students />
+      case "7":
+        return <CourseApplications />
       default:
         return <Dashboard />
     }

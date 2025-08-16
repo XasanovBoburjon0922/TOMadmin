@@ -12,6 +12,7 @@ import {
   TeamOutlined,
   TrophyOutlined,
   RiseOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons"
 
 const Dashboard = () => {
@@ -22,6 +23,7 @@ const Dashboard = () => {
     galleries: 0,
     teachers: 0,
     students: 0,
+    applications: 0,
   })
   const [loading, setLoading] = useState(false)
 
@@ -32,20 +34,22 @@ const Dashboard = () => {
   const fetchDashboardStats = async () => {
     setLoading(true)
     try {
-      const [branchesRes, coursesRes, galleriesRes, teachersRes, studentsRes] = await Promise.all([
+      const [branchesRes, coursesRes, galleriesRes, teachersRes, studentsRes, applicationsRes] = await Promise.all([
         fetch("https://api.tom-education.uz/branches/list"),
         fetch("https://api.tom-education.uz/courses/list"),
         fetch("https://api.tom-education.uz/gallery/list"),
         fetch("https://api.tom-education.uz/teachers/list"),
         fetch("https://api.tom-education.uz/certificates/list"),
+        fetch("https://api.tom-education.uz/course_applications/list"),
       ])
 
-      const [branches, courses, galleries, teachers, students] = await Promise.all([
+      const [branches, courses, galleries, teachers, students, applications] = await Promise.all([
         branchesRes.json(),
         coursesRes.json(),
         galleriesRes.json(),
         teachersRes.json(),
         studentsRes.json(),
+        applicationsRes.json(),
       ])
 
       setStats({
@@ -54,6 +58,7 @@ const Dashboard = () => {
         galleries: galleries.total_count || galleries.galleries?.length || 0,
         teachers: teachers.total_count || teachers.teacher?.length || 0,
         students: students.total_count || students.certificates?.length || 0,
+        applications: applications.total_count || applications.applications?.length || 0,
       })
     } catch (error) {
       console.error("Dashboard ma'lumotlarini yuklashda xatolik:", error)
@@ -86,6 +91,15 @@ const Dashboard = () => {
       color: "#16a34a",
       bgColor: "#f0fdf4",
       change: "+8%",
+      changeType: "increase",
+    },
+    {
+      title: "Kurs Arizalari",
+      value: stats.applications,
+      icon: <FileTextOutlined />,
+      color: "#059669",
+      bgColor: "#f0fdf4",
+      change: "+15%",
       changeType: "increase",
     },
     {
