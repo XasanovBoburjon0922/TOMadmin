@@ -1,7 +1,7 @@
 // src/api.ts
 import axios from 'axios';
 
-const API_BASE = 'http://142.93.167.190:8080';
+const API_BASE = 'https://api.tom-education.uz';
 
 export const uploadFile = async (file) => {
   const formData = new FormData();
