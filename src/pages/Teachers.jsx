@@ -15,6 +15,8 @@ import {
   message,
   InputNumber,
   Popconfirm,
+  Upload,
+  Image,
 } from "antd"
 import {
   PlusOutlined,
@@ -25,7 +27,9 @@ import {
   TrophyOutlined,
   BookOutlined,
   StarOutlined,
+  UploadOutlined,
 } from "@ant-design/icons"
+import axios from "axios"
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState([])
@@ -33,6 +37,27 @@ const Teachers = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTeacher, setEditingTeacher] = useState(null)
   const [form] = Form.useForm()
+  const [file, setFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+
+  // Fayl yuklash funksiyasi
+  const uploadFile = async (file) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    try {
+      const response = await axios.post("https://api.tom-education.uz/file-upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      if (response.status === 200 && response.data.Url) {
+        return response.data.Url
+      } else {
+        throw new Error("API dan rasm URL qaytarilmadi")
+      }
+    } catch (error) {
+      console.error("Fayl yuklash xatosi:", error)
+      throw new Error("Rasm yuklashda xatolik yuz berdi")
+    }
+  }
 
   useEffect(() => {
     fetchTeachers()
@@ -43,9 +68,10 @@ const Teachers = () => {
     try {
       const response = await fetch("https://api.tom-education.uz/teachers/list")
       const data = await response.json()
-
       if (data.teacher) {
         setTeachers(data.teacher)
+      } else {
+        setTeachers([])
       }
     } catch (error) {
       console.error("O'qituvchilarni yuklashda xatolik:", error)
@@ -56,9 +82,41 @@ const Teachers = () => {
     }
   }
 
+  const handleFileChange = ({ file }) => {
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        message.error("Rasm hajmi 5MB dan kichik bo'lishi kerak")
+        return
+      }
+      if (!file.type.startsWith("image/")) {
+        message.error("Faqat rasm fayllarini yuklash mumkin")
+        return
+      }
+      setFile(file)
+      setPreviewUrl(URL.createObjectURL(file))
+    }
+  }
+
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
+      let profilePictureUrl = values.profile_picture_url || ""
+
+      if (file) {
+        try {
+          profilePictureUrl = await uploadFile(file)
+          message.success("Rasm muvaffaqiyatli yuklandi")
+        } catch (error) {
+          message.error(error.message)
+          setLoading(false)
+          return
+        }
+      } else if (!editingTeacher && !profilePictureUrl) {
+        message.error("Yangi o'qituvchi uchun rasm yuklash zarur")
+        setLoading(false)
+        return
+      }
+
       const teacherData = {
         name: {
           uz: values.name_uz,
@@ -69,41 +127,39 @@ const Teachers = () => {
         experience_years: values.experience_years.toString(),
         graduated_students: values.graduated_students.toString(),
         ielts_score: values.ielts_score.toString(),
-        profile_picture_url: values.profile_picture_url || "",
+        profile_picture_url: profilePictureUrl,
       }
 
+      let response
       if (editingTeacher) {
-        // Update teacher
-        const response = await fetch(`https://api.tom-education.uz/teachers/update?id=${editingTeacher.id}`, {
+        response = await fetch(`https://api.tom-education.uz/teachers/update?id=${editingTeacher.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(teacherData),
         })
-
-        if (response.ok) {
-          message.success("O'qituvchi muvaffaqiyatli yangilandi")
-        }
       } else {
-        // Create teacher
-        const response = await fetch("https://api.tom-education.uz/teachers/create", {
+        response = await fetch("https://api.tom-education.uz/teachers/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(teacherData),
         })
-
-        if (response.ok) {
-          message.success("O'qituvchi muvaffaqiyatli qo'shildi")
-        }
       }
 
-      fetchTeachers()
-      setIsModalOpen(false)
-      setEditingTeacher(null)
-      form.resetFields()
+      if (response.ok) {
+        message.success(editingTeacher ? "O'qituvchi muvaffaqiyatli yangilandi" : "O'qituvchi muvaffaqiyatli qo'shildi")
+        fetchTeachers()
+        setIsModalOpen(false)
+        setEditingTeacher(null)
+        setFile(null)
+        setPreviewUrl(null)
+        form.resetFields()
+      } else {
+        throw new Error("Server javobi muvaffaqiyatsiz")
+      }
     } catch (error) {
       console.error("O'qituvchini saqlashda xatolik:", error)
       message.error("O'qituvchini saqlashda xatolik yuz berdi")
@@ -115,15 +171,17 @@ const Teachers = () => {
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher)
     form.setFieldsValue({
-      name_uz: teacher.name?.uz,
-      name_en: teacher.name?.en,
-      name_ru: teacher.name?.ru,
-      contact: teacher.contact,
-      experience_years: Number.parseInt(teacher.experience_years),
-      graduated_students: Number.parseInt(teacher.graduated_students),
-      ielts_score: Number.parseFloat(teacher.ielts_score),
-      profile_picture_url: teacher.profile_picture_url,
+      name_uz: teacher.name?.uz || "",
+      name_en: teacher.name?.en || "",
+      name_ru: teacher.name?.ru || "",
+      contact: teacher.contact || "",
+      experience_years: Number.parseInt(teacher.experience_years) || 0,
+      graduated_students: Number.parseInt(teacher.graduated_students) || 0,
+      ielts_score: Number.parseFloat(teacher.ielts_score) || 0,
+      profile_picture_url: teacher.profile_picture_url || "",
     })
+    setFile(null)
+    setPreviewUrl(teacher.profile_picture_url || null)
     setIsModalOpen(true)
   }
 
@@ -132,10 +190,11 @@ const Teachers = () => {
       const response = await fetch(`https://api.tom-education.uz/teachers/delete?id=${id}`, {
         method: "DELETE",
       })
-
       if (response.ok) {
         message.success("O'qituvchi muvaffaqiyatli o'chirildi")
         fetchTeachers()
+      } else {
+        throw new Error("O'chirish muvaffaqiyatsiz")
       }
     } catch (error) {
       console.error("O'qituvchini o'chirishda xatolik:", error)
@@ -305,6 +364,8 @@ const Teachers = () => {
             onClick={() => {
               setEditingTeacher(null)
               form.resetFields()
+              setFile(null)
+              setPreviewUrl(null)
               setIsModalOpen(true)
             }}
             style={{
@@ -367,6 +428,8 @@ const Teachers = () => {
         onCancel={() => {
           setIsModalOpen(false)
           setEditingTeacher(null)
+          setFile(null)
+          setPreviewUrl(null)
           form.resetFields()
         }}
         footer={null}
@@ -439,15 +502,57 @@ const Teachers = () => {
             </Form.Item>
           </div>
 
-          <Form.Item name="profile_picture_url" label="Profil rasm URL">
-            <Input placeholder="Profil rasm URL (ixtiyoriy)" style={{ borderRadius: "6px" }} />
+          <Form.Item
+            name="image"
+            label="Profil rasmni yuklash"
+            rules={[{ required: !editingTeacher, message: "Rasmni yuklash zarur" }]}
+          >
+            <Upload
+              beforeUpload={() => false}
+              onChange={handleFileChange}
+              accept="image/*"
+              showUploadList={false}
+            >
+              <Button icon={<UploadOutlined />}>Rasm tanlash</Button>
+              {file && <span style={{ marginLeft: "10px" }}>{file.name}</span>}
+            </Upload>
+            {file && (
+              <Button
+                style={{ marginLeft: "10px", marginTop: "10px" }}
+                onClick={() => {
+                  setFile(null)
+                  setPreviewUrl(null)
+                }}
+              >
+                Rasmni olib tashlash
+              </Button>
+            )}
           </Form.Item>
+
+          {(previewUrl || editingTeacher?.profile_picture_url) && (
+            <Form.Item label="Rasm oldindan ko'rish">
+              <Image
+                src={previewUrl || editingTeacher?.profile_picture_url}
+                alt="Rasm oldindan ko'rish"
+                style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "6px", marginTop: "10px" }}
+                fallback="https://via.placeholder.com/150?text=Rasm+yuklanmadi"
+              />
+            </Form.Item>
+          )}
+
+          {editingTeacher && (
+            <Form.Item name="profile_picture_url" label="Mavjud rasm URL">
+              <Input placeholder="Rasm URL manzili" style={{ borderRadius: "6px" }} disabled />
+            </Form.Item>
+          )}
 
           <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
             <Button
               onClick={() => {
                 setIsModalOpen(false)
                 setEditingTeacher(null)
+                setFile(null)
+                setPreviewUrl(null)
                 form.resetFields()
               }}
               style={{ borderRadius: "6px", height: "40px" }}

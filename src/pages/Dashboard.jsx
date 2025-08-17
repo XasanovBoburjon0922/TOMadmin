@@ -67,13 +67,6 @@ const Dashboard = () => {
     }
   }
 
-  const recentActivities = [
-    { avatar: "C", action: "Yangi kurs qo'shildi", user: "Admin", time: "2 soat oldin" },
-    { avatar: "T", action: "O'qituvchi profili yangilandi", user: "Admin", time: "5 soat oldin" },
-    { avatar: "G", action: "Galereya rasmi yuklandi", user: "Admin", time: "1 kun oldin" },
-    { avatar: "B", action: "Filial ma'lumotlari o'zgartirildi", user: "Admin", time: "2 kun oldin" },
-  ]
-
   const statsCards = [
     {
       title: t("totalBranches"),
@@ -181,73 +174,6 @@ const Dashboard = () => {
           </Col>
         ))}
       </Row>
-
-      <Row gutter={[24, 24]}>
-        <Col xs={24} lg={16}>
-          <Card
-            title={
-              <div className="flex items-center">
-                <StarOutlined className="mr-2 text-green-500" />
-                <span className="font-semibold">{t("performanceOverview")}</span>
-              </div>
-            }
-            className="border-0 shadow-sm"
-            style={{ borderRadius: "16px" }}
-          >
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <div className="text-center">
-                  <Progress type="circle" percent={85} strokeColor="#22c55e" size={120} />
-                  <p className="mt-4 text-gray-600 font-medium">{t("courseCompletion")}</p>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div className="text-center">
-                  <Progress type="circle" percent={92} strokeColor="#16a34a" size={120} />
-                  <p className="mt-4 text-gray-600 font-medium">{t("studentSatisfaction")}</p>
-                </div>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={8}>
-          <Card
-            title={
-              <div className="flex items-center">
-                <TeamOutlined className="mr-2 text-green-500" />
-                <span className="font-semibold">{t("recentActivity")}</span>
-              </div>
-            }
-            className="border-0 shadow-sm"
-            style={{ borderRadius: "16px" }}
-          >
-            <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <Avatar
-                    size={40}
-                    style={{
-                      background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-                    }}
-                  >
-                    {activity.avatar}
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800 mb-1">
-                      {t(`activity.${activity.action.toLowerCase().replace(/\s/g, "_")}`)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {t("by")} {activity.user} • {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
       <Card
         title={
           <div className="flex items-center">

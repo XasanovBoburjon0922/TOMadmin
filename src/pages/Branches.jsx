@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, Table, Button, Form, Input, Modal, Space, Avatar, Tooltip, message, Popconfirm } from "antd"
-import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined } from "@ant-design/icons"
+import { Card, Table, Button, Form, Input, Modal, Space, Avatar, Tooltip, message, Popconfirm, Upload, Image } from "antd"
+import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined, UploadOutlined } from "@ant-design/icons"
+import axios from "axios"
 
 const Branches = () => {
   const [branches, setBranches] = useState([])
@@ -10,6 +11,27 @@ const Branches = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState(null)
   const [form] = Form.useForm()
+  const [file, setFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+
+  // Fayl yuklash funksiyasi
+  const uploadFile = async (file) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    try {
+      const response = await axios.post("https://api.tom-education.uz/file-upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      if (response.status === 200 && response.data.Url) {
+        return response.data.Url
+      } else {
+        throw new Error("API dan rasm URL qaytarilmadi")
+      }
+    } catch (error) {
+      console.error("Fayl yuklash xatosi:", error)
+      throw new Error("Rasm yuklashda xatolik yuz berdi")
+    }
+  }
 
   useEffect(() => {
     fetchBranches()
@@ -20,9 +42,10 @@ const Branches = () => {
     try {
       const response = await fetch("https://api.tom-education.uz/branches/list")
       const data = await response.json()
-
       if (data.branches) {
         setBranches(data.branches)
+      } else {
+        setBranches([])
       }
     } catch (error) {
       console.error("Filiallarni yuklashda xatolik:", error)
@@ -33,9 +56,41 @@ const Branches = () => {
     }
   }
 
+  const handleFileChange = ({ file }) => {
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        message.error("Rasm hajmi 5MB dan kichik bo'lishi kerak")
+        return
+      }
+      if (!file.type.startsWith("image/")) {
+        message.error("Faqat rasm fayllarini yuklash mumkin")
+        return
+      }
+      setFile(file)
+      setPreviewUrl(URL.createObjectURL(file))
+    }
+  }
+
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
+      let imgUrl = values.img_url || ""
+
+      if (file) {
+        try {
+          imgUrl = await uploadFile(file)
+          message.success("Rasm muvaffaqiyatli yuklandi")
+        } catch (error) {
+          message.error(error.message)
+          setLoading(false)
+          return
+        }
+      } else if (!editingBranch && !imgUrl) {
+        message.error("Yangi filial uchun rasm yuklash zarur")
+        setLoading(false)
+        return
+      }
+
       const branchData = {
         name: {
           uz: values.name_uz,
@@ -45,41 +100,39 @@ const Branches = () => {
         contact: values.contact,
         google_url: values.google_url,
         yandex_url: values.yandex_url,
-        img_url: values.img_url || "",
+        img_url: imgUrl,
       }
 
+      let response
       if (editingBranch) {
-        // Update branch
-        const response = await fetch(`https://api.tom-education.uz/branches/update?id=${editingBranch.id}`, {
+        response = await fetch(`https://api.tom-education.uz/branches/update?id=${editingBranch.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(branchData),
         })
-
-        if (response.ok) {
-          message.success("Filial muvaffaqiyatli yangilandi")
-        }
       } else {
-        // Create branch
-        const response = await fetch("https://api.tom-education.uz/branches/create", {
+        response = await fetch("https://api.tom-education.uz/branches/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(branchData),
         })
-
-        if (response.ok) {
-          message.success("Filial muvaffaqiyatli qo'shildi")
-        }
       }
 
-      fetchBranches()
-      setIsModalOpen(false)
-      setEditingBranch(null)
-      form.resetFields()
+      if (response.ok) {
+        message.success(editingBranch ? "Filial muvaffaqiyatli yangilandi" : "Filial muvaffaqiyatli qo'shildi")
+        fetchBranches()
+        setIsModalOpen(false)
+        setEditingBranch(null)
+        setFile(null)
+        setPreviewUrl(null)
+        form.resetFields()
+      } else {
+        throw new Error("Server javobi muvaffaqiyatsiz")
+      }
     } catch (error) {
       console.error("Filialni saqlashda xatolik:", error)
       message.error("Filialni saqlashda xatolik yuz berdi")
@@ -91,14 +144,16 @@ const Branches = () => {
   const handleEdit = (branch) => {
     setEditingBranch(branch)
     form.setFieldsValue({
-      name_uz: branch.name?.uz,
-      name_en: branch.name?.en,
-      name_ru: branch.name?.ru,
-      contact: branch.contact,
-      google_url: branch.google_url,
-      yandex_url: branch.yandex_url,
-      img_url: branch.img_url,
+      name_uz: branch.name?.uz || "",
+      name_en: branch.name?.en || "",
+      name_ru: branch.name?.ru || "",
+      contact: branch.contact || "",
+      google_url: branch.google_url || "",
+      yandex_url: branch.yandex_url || "",
+      img_url: branch.img_url || "",
     })
+    setFile(null)
+    setPreviewUrl(branch.img_url || null)
     setIsModalOpen(true)
   }
 
@@ -107,10 +162,11 @@ const Branches = () => {
       const response = await fetch(`https://api.tom-education.uz/branches/delete?id=${id}`, {
         method: "DELETE",
       })
-
       if (response.ok) {
         message.success("Filial muvaffaqiyatli o'chirildi")
         fetchBranches()
+      } else {
+        throw new Error("O'chirish muvaffaqiyatsiz")
       }
     } catch (error) {
       console.error("Filialni o'chirishda xatolik:", error)
@@ -247,6 +303,8 @@ const Branches = () => {
             onClick={() => {
               setEditingBranch(null)
               form.resetFields()
+              setFile(null)
+              setPreviewUrl(null)
               setIsModalOpen(true)
             }}
             style={{
@@ -280,10 +338,10 @@ const Branches = () => {
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} Filiallar`,
+            showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} Filiallar`,
           }}
           locale={{
-            emptyText: "Ma'lumotlar yo'q", // Custom message for empty table
+            emptyText: "Ma'lumotlar yo'q",
           }}
           style={{
             background: "white",
@@ -302,11 +360,16 @@ const Branches = () => {
               padding: "8px 0",
             }}
           >
-            {editingBranch ? "Tahrirlash" + " Filial nomi" : "Filial qo'shish"}
+            {editingBranch ? "Filialni tahrirlash" : "Filial qo'shish"}
           </div>
         }
         open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false)
+          setFile(null)
+          setPreviewUrl(null)
+          form.resetFields()
+        }}
         footer={null}
         width={600}
         style={{ top: 20 }}
@@ -358,12 +421,60 @@ const Branches = () => {
             </Form.Item>
           </div>
 
-          <Form.Item name="img_url" label="Rasmni yuklash">
-            <Input placeholder="Rasm URL manzili" style={{ borderRadius: "6px" }} />
+          <Form.Item
+            name="image"
+            label="Rasmni yuklash"
+            rules={[{ required: !editingBranch, message: "Rasmni yuklash zarur" }]}
+          >
+            <Upload
+              beforeUpload={() => false}
+              onChange={handleFileChange}
+              accept="image/*"
+              showUploadList={false}
+            >
+              <Button icon={<UploadOutlined />}>Rasm tanlash</Button>
+              {file && <span style={{ marginLeft: "10px" }}>{file.name}</span>}
+            </Upload>
+            {file && (
+              <Button
+                style={{ marginLeft: "10px", marginTop: "10px" }}
+                onClick={() => {
+                  setFile(null)
+                  setPreviewUrl(null)
+                }}
+              >
+                Rasmni olib tashlash
+              </Button>
+            )}
           </Form.Item>
 
+          {(previewUrl || editingBranch?.img_url) && (
+            <Form.Item label="Rasm oldindan ko'rish">
+              <Image
+                src={previewUrl || editingBranch?.img_url}
+                alt="Rasm oldindan ko'rish"
+                style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "6px", marginTop: "10px" }}
+                fallback="https://via.placeholder.com/150?text=Rasm+yuklanmadi"
+              />
+            </Form.Item>
+          )}
+
+          {editingBranch && (
+            <Form.Item name="img_url" label="Mavjud rasm URL">
+              <Input placeholder="Rasm URL manzili" style={{ borderRadius: "6px" }} disabled />
+            </Form.Item>
+          )}
+
           <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
-            <Button onClick={() => setIsModalOpen(false)} style={{ borderRadius: "6px", height: "40px" }}>
+            <Button
+              onClick={() => {
+                setIsModalOpen(false)
+                setFile(null)
+                setPreviewUrl(null)
+                form.resetFields()
+              }}
+              style={{ borderRadius: "6px", height: "40px" }}
+            >
               Bekor qilish
             </Button>
             <Button
