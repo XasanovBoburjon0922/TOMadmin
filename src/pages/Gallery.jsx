@@ -162,10 +162,12 @@ const Gallery = () => {
               className="border-0 shadow-sm hover:shadow-lg transition-shadow duration-300"
               style={{ borderRadius: "16px" }}
               cover={
-                <div className="h-48 overflow-hidden" style={{ borderRadius: "16px 16px 0 0" }}>
+                <div className="overflow-hidden" style={{ borderRadius: "16px 16px 0 0" }}>
                   <Image
                     src={item.picture_url || "/placeholder.svg"}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full"
+                    width={400}
+                    height={250}
                     preview={{ mask: <EyeOutlined className="text-white text-xl" /> }}
                     fallback="/placeholder.svg"
                   />
