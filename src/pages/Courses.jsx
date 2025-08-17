@@ -110,7 +110,7 @@ const Courses = () => {
         branch_description: values.branch_description,
         duration: values.duration,
         description: descriptionArray,
-        price: parseFloat(values.price),
+        price: values.price, // Send price as-is without parseFloat
         type: values.type || "",
         picture_url: pictureUrl,
       }
@@ -147,7 +147,7 @@ const Courses = () => {
           branch_description: values.branch_description,
           duration: values.duration,
           description: descriptionArray,
-          price: parseFloat(values.price),
+          price: values.price,
           type: values.type || "",
           picture_url: values.file?.[0]?.originFileObj ? "file uploaded" : editingCourse?.picture_url || "",
         },
@@ -468,7 +468,13 @@ const Courses = () => {
                     { type: "number", min: 0, message: t("coursePrice") + " must be non-negative" },
                   ]}
                 >
-                  <InputNumber min={0} className="w-full rounded-lg" placeholder={t("coursePrice")} />
+                  <InputNumber
+                    min={0}
+                    step={0.1} // Allow decimal inputs
+                    precision={2} // Limit to 2 decimal places
+                    className="w-full rounded-lg"
+                    placeholder={t("coursePrice")}
+                  />
                 </Form.Item>
                 <Form.Item
                   name="type"

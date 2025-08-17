@@ -87,24 +87,24 @@ export default function Students() {
 
   const handleSubmit = async (values) => {
     try {
-      setLoading(true)
-      let certificateUrl = values.certificate_url || ""
-
+      setLoading(true);
+      let certificateUrl = values.certificate_url || "";
+  
       if (file) {
         try {
-          certificateUrl = await uploadFile(file)
-          message.success("Sertifikat muvaffaqiyatli yuklandi")
+          certificateUrl = await uploadFile(file);
+          message.success("Sertifikat muvaffaqiyatli yuklandi");
         } catch (error) {
-          message.error(error.message)
-          setLoading(false)
-          return
+          message.error(error.message);
+          setLoading(false);
+          return;
         }
       } else if (!editingStudent && !certificateUrl) {
-        message.error("Yangi o'quvchi uchun sertifikat yuklash zarur")
-        setLoading(false)
-        return
+        message.error("Yangi o'quvchi uchun sertifikat yuklash zarur");
+        setLoading(false);
+        return;
       }
-
+  
       const studentData = {
         name: {
           uz: values.name_uz,
@@ -112,12 +112,12 @@ export default function Students() {
           ru: values.name_ru,
         },
         cefr_level: values.cefr_level,
-        ielts_score: Math.floor(values.ielts_score),
+        ielts_score: parseFloat(values.ielts_score.toFixed(1)), // Ensure float with 1 decimal place
         certificate_url: certificateUrl,
-      }
-      console.log("Yuborilgan studentData:", studentData)
-
-      let response
+      };
+      console.log("Yuborilgan studentData:", studentData);
+  
+      let response;
       if (editingStudent) {
         response = await fetch(`https://api.tom-education.uz/certificates/update?id=${editingStudent.id}`, {
           method: "PUT",
@@ -125,7 +125,7 @@ export default function Students() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(studentData),
-        })
+        });
       } else {
         response = await fetch("https://api.tom-education.uz/certificates/create", {
           method: "POST",
@@ -133,27 +133,27 @@ export default function Students() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(studentData),
-        })
+        });
       }
-
+  
       if (response.ok) {
-        message.success(editingStudent ? "O'quvchi muvaffaqiyatli yangilandi" : "O'quvchi muvaffaqiyatli qo'shildi")
-        setModalVisible(false)
-        setEditingStudent(null)
-        setFile(null)
-        setPreviewUrl(null)
-        form.resetFields()
-        fetchStudents()
+        message.success(editingStudent ? "O'quvchi muvaffaqiyatli yangilandi" : "O'quvchi muvaffaqiyatli qo'shildi");
+        setModalVisible(false);
+        setEditingStudent(null);
+        setFile(null);
+        setPreviewUrl(null);
+        form.resetFields();
+        fetchStudents();
       } else {
-        throw new Error("Server javobi muvaffaqiyatsiz")
+        throw new Error("Server javobi muvaffaqiyatsiz");
       }
     } catch (error) {
-      console.error("O'quvchini saqlashda xatolik:", error)
-      message.error("O'quvchini saqlashda xatolik yuz berdi")
+      console.error("O'quvchini saqlashda xatolik:", error);
+      message.error("O'quvchini saqlashda xatolik yuz berdi");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDelete = async (id) => {
     try {
@@ -439,12 +439,6 @@ export default function Students() {
             label="IELTS Ball"
             rules={[
               { required: true, message: "IELTS ball kiritish majburiy!" },
-              {
-                validator: (_, value) =>
-                  value % 0.5 === 0
-                    ? Promise.resolve()
-                    : Promise.reject(new Error("IELTS ball faqat 0.0, 0.5, 1.0, ..., 8.0, 8.5, 9.0 bo'lishi mumkin")),
-              },
             ]}
           >
             <InputNumber
@@ -452,7 +446,6 @@ export default function Students() {
               min={0}
               max={9}
               step={0.5}
-              precision={1}
               style={{ width: "100%", borderRadius: "6px" }}
             />
           </Form.Item>
