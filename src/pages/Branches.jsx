@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Card, Table, Button, Form, Input, Modal, Space, Avatar, Tooltip, message, Popconfirm, Upload, Image } from "antd"
 import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined, UploadOutlined } from "@ant-design/icons"
 import axios from "axios"
 
 const Branches = () => {
+  const { t, i18n } = useTranslation()
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -25,11 +27,11 @@ const Branches = () => {
       if (response.status === 200 && response.data.Url) {
         return response.data.Url
       } else {
-        throw new Error("API dan rasm URL qaytarilmadi")
+        throw new Error(t("uploadError"))
       }
     } catch (error) {
-      console.error("Fayl yuklash xatosi:", error)
-      throw new Error("Rasm yuklashda xatolik yuz berdi")
+      console.error(t("uploadError"), error)
+      throw new Error(t("uploadError"))
     }
   }
 
@@ -48,8 +50,8 @@ const Branches = () => {
         setBranches([])
       }
     } catch (error) {
-      console.error("Filiallarni yuklashda xatolik:", error)
-      message.error("Filiallarni yuklashda xatolik yuz berdi")
+      console.error(t("fetchError"), error)
+      message.error(t("fetchError"))
       setBranches([])
     } finally {
       setLoading(false)
@@ -59,11 +61,11 @@ const Branches = () => {
   const handleFileChange = ({ file }) => {
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        message.error("Rasm hajmi 5MB dan kichik bo'lishi kerak")
+        message.error(t("imageSizeError"))
         return
       }
       if (!file.type.startsWith("image/")) {
-        message.error("Faqat rasm fayllarini yuklash mumkin")
+        message.error(t("imageTypeError"))
         return
       }
       setFile(file)
@@ -79,14 +81,14 @@ const Branches = () => {
       if (file) {
         try {
           imgUrl = await uploadFile(file)
-          message.success("Rasm muvaffaqiyatli yuklandi")
+          message.success(t("uploadSuccess"))
         } catch (error) {
           message.error(error.message)
           setLoading(false)
           return
         }
       } else if (!editingBranch && !imgUrl) {
-        message.error("Yangi filial uchun rasm yuklash zarur")
+        message.error(t("imageRequired"))
         setLoading(false)
         return
       }
@@ -123,7 +125,7 @@ const Branches = () => {
       }
 
       if (response.ok) {
-        message.success(editingBranch ? "Filial muvaffaqiyatli yangilandi" : "Filial muvaffaqiyatli qo'shildi")
+        message.success(t("saveSuccess"))
         fetchBranches()
         setIsModalOpen(false)
         setEditingBranch(null)
@@ -131,11 +133,11 @@ const Branches = () => {
         setPreviewUrl(null)
         form.resetFields()
       } else {
-        throw new Error("Server javobi muvaffaqiyatsiz")
+        throw new Error(t("saveError"))
       }
     } catch (error) {
-      console.error("Filialni saqlashda xatolik:", error)
-      message.error("Filialni saqlashda xatolik yuz berdi")
+      console.error(t("saveError"), error)
+      message.error(t("saveError"))
     } finally {
       setLoading(false)
     }
@@ -163,20 +165,20 @@ const Branches = () => {
         method: "DELETE",
       })
       if (response.ok) {
-        message.success("Filial muvaffaqiyatli o'chirildi")
+        message.success(t("deleteSuccess"))
         fetchBranches()
       } else {
-        throw new Error("O'chirish muvaffaqiyatsiz")
+        throw new Error(t("deleteError"))
       }
     } catch (error) {
-      console.error("Filialni o'chirishda xatolik:", error)
-      message.error("Filialni o'chirishda xatolik yuz berdi")
+      console.error(t("deleteError"), error)
+      message.error(t("deleteError"))
     }
   }
 
   const columns = [
     {
-      title: "Filial nomi",
+      title: t("branchName"),
       key: "branch",
       render: (_, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -191,18 +193,18 @@ const Branches = () => {
           />
           <div>
             <div style={{ fontWeight: 600, fontSize: "14px", color: "#262626" }}>
-              {record.name?.uz || record.name?.en || "N/A"}
+              {record.name?.[i18n.language] || record.name?.en || "N/A"}
             </div>
             <div style={{ fontSize: "12px", color: "#8c8c8c", display: "flex", alignItems: "center", gap: "4px" }}>
               <EnvironmentOutlined />
-              Filial manzili
+              {t("branchAddress")}
             </div>
           </div>
         </div>
       ),
     },
     {
-      title: "Telefon raqam",
+      title: t("contactLabel"),
       dataIndex: "contact",
       key: "contact",
       render: (contact) => (
@@ -212,21 +214,21 @@ const Branches = () => {
       ),
     },
     {
-      title: "Yaratilgan sana",
+      title: t("createdDate"),
       dataIndex: "created_at",
       key: "created_at",
       render: (date) => (
         <span style={{ color: "#8c8c8c", fontSize: "12px" }}>
-          {date ? new Date(date).toLocaleDateString("uz-UZ") : "N/A"}
+          {date ? new Date(date).toLocaleDateString(i18n.language) : "N/A"}
         </span>
       ),
     },
     {
-      title: "Amallar",
+      title: t("actions"),
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Tooltip title="Tahrirlash">
+          <Tooltip title={t("edit")}>
             <Button
               type="text"
               icon={<EditOutlined />}
@@ -239,14 +241,14 @@ const Branches = () => {
             />
           </Tooltip>
           <Popconfirm
-            title="Filialni o'chirish"
-            description="Haqiqatan ham bu filialni o'chirmoqchimisiz?"
+            title={t("deleteBranch")}
+            description={t("deleteConfirm")}
             onConfirm={() => handleDelete(record.id)}
-            okText="Ha"
-            cancelText="Yo'q"
+            okText={t("okText")}
+            cancelText={t("cancelText")}
             okButtonProps={{ style: { background: "#dc2626", borderColor: "#dc2626" } }}
           >
-            <Tooltip title="O'chirish">
+            <Tooltip title={t("delete")}>
               <Button
                 type="text"
                 danger
@@ -284,7 +286,7 @@ const Branches = () => {
                 textShadow: "0 2px 4px rgba(0,0,0,0.1)",
               }}
             >
-              Filiallar
+              {t("branchHeader")}
             </h1>
             <p
               style={{
@@ -293,7 +295,7 @@ const Branches = () => {
                 fontSize: "16px",
               }}
             >
-              Filiallar
+              {t("branchSubtitle")}
             </p>
           </div>
           <Button
@@ -317,7 +319,7 @@ const Branches = () => {
               backdropFilter: "blur(10px)",
             }}
           >
-            Filial qo'shish
+            {t("addBranchButton")}
           </Button>
         </div>
       </Card>
@@ -336,12 +338,9 @@ const Branches = () => {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} Filiallar`,
           }}
           locale={{
-            emptyText: "Ma'lumotlar yo'q",
+            emptyText: t("noBranches"),
           }}
           style={{
             background: "white",
@@ -360,7 +359,7 @@ const Branches = () => {
               padding: "8px 0",
             }}
           >
-            {editingBranch ? "Filialni tahrirlash" : "Filial qo'shish"}
+            {editingBranch ? t("editBranch") : t("addBranchButton")}
           </div>
         }
         open={isModalOpen}
@@ -378,44 +377,48 @@ const Branches = () => {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <Form.Item
               name="name_uz"
-              label="Filial nomi (O'zbek)"
-              rules={[{ required: true, message: "Filial nomi (O'zbek) zarur" }]}
+              label={t("branchNameUz")}
+              rules={[{ required: true, message: t("nameUzRequired") }]}
             >
-              <Input placeholder="Filial nomi (O'zbek)" style={{ borderRadius: "6px" }} />
+              <Input placeholder={t("branchNameUz")} style={{ borderRadius: "6px" }} />
             </Form.Item>
             <Form.Item
               name="name_en"
-              label="Filial nomi (English)"
-              rules={[{ required: true, message: "Filial nomi (English) zarur" }]}
+              label={t("branchNameEn")}
+              rules={[{ required: true, message: t("nameEnRequired") }]}
             >
-              <Input placeholder="Filial nomi (English)" style={{ borderRadius: "6px" }} />
+              <Input placeholder={t("branchNameEn")} style={{ borderRadius: "6px" }} />
             </Form.Item>
           </div>
 
           <Form.Item
             name="name_ru"
-            label="Filial nomi (Russian)"
-            rules={[{ required: true, message: "Filial nomi (Russian) zarur" }]}
+            label={t("branchNameRu")}
+            rules={[{ required: true, message: t("nameRuRequired") }]}
           >
-            <Input placeholder="Filial nomi (Russian)" style={{ borderRadius: "6px" }} />
+            <Input placeholder={t("branchNameRu")} style={{ borderRadius: "6px" }} />
           </Form.Item>
 
-          <Form.Item name="contact" label="Telefon raqam" rules={[{ required: true, message: "Telefon raqam zarur" }]}>
-            <Input placeholder="Telefon raqam" style={{ borderRadius: "6px" }} />
+          <Form.Item
+            name="contact"
+            label={t("contactLabel")}
+            rules={[{ required: true, message: t("contactRequired") }]}
+          >
+            <Input placeholder={t("contactLabel")} style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <Form.Item
               name="google_url"
-              label="Google Maps URL"
-              rules={[{ required: true, message: "Google Maps URL zarur" }]}
+              label={t("googleUrl")}
+              rules={[{ required: true, message: t("googleUrlRequired") }]}
             >
               <Input placeholder="https://maps.google.com/..." style={{ borderRadius: "6px" }} />
             </Form.Item>
             <Form.Item
               name="yandex_url"
-              label="Yandex Maps URL"
-              rules={[{ required: true, message: "Yandex Maps URL zarur" }]}
+              label={t("yandexUrl")}
+              rules={[{ required: true, message: t("yandexUrlRequired") }]}
             >
               <Input placeholder="https://yandex.com/maps/..." style={{ borderRadius: "6px" }} />
             </Form.Item>
@@ -423,8 +426,8 @@ const Branches = () => {
 
           <Form.Item
             name="image"
-            label="Rasmni yuklash"
-            rules={[{ required: !editingBranch, message: "Rasmni yuklash zarur" }]}
+            label={t("uploadImageLabel")}
+            rules={[{ required: !editingBranch, message: t("imageRequired") }]}
           >
             <Upload
               beforeUpload={() => false}
@@ -432,7 +435,7 @@ const Branches = () => {
               accept="image/*"
               showUploadList={false}
             >
-              <Button icon={<UploadOutlined />}>Rasm tanlash</Button>
+              <Button icon={<UploadOutlined />}>{t("uploadImageLabel")}</Button>
               {file && <span style={{ marginLeft: "10px" }}>{file.name}</span>}
             </Upload>
             {file && (
@@ -443,16 +446,16 @@ const Branches = () => {
                   setPreviewUrl(null)
                 }}
               >
-                Rasmni olib tashlash
+                {t("removeImage")}
               </Button>
             )}
           </Form.Item>
 
           {(previewUrl || editingBranch?.img_url) && (
-            <Form.Item label="Rasm oldindan ko'rish">
+            <Form.Item label={t("imagePreview")}>
               <Image
                 src={previewUrl || editingBranch?.img_url}
-                alt="Rasm oldindan ko'rish"
+                alt={t("imagePreview")}
                 style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "6px", marginTop: "10px" }}
                 fallback="https://via.placeholder.com/150?text=Rasm+yuklanmadi"
               />
@@ -460,8 +463,8 @@ const Branches = () => {
           )}
 
           {editingBranch && (
-            <Form.Item name="img_url" label="Mavjud rasm URL">
-              <Input placeholder="Rasm URL manzili" style={{ borderRadius: "6px" }} disabled />
+            <Form.Item name="img_url" label={t("existingImageUrl")}>
+              <Input placeholder={t("existingImageUrl")} style={{ borderRadius: "6px" }} disabled />
             </Form.Item>
           )}
 
@@ -475,7 +478,7 @@ const Branches = () => {
               }}
               style={{ borderRadius: "6px", height: "40px" }}
             >
-              Bekor qilish
+              {t("cancel")}
             </Button>
             <Button
               type="primary"
@@ -488,7 +491,7 @@ const Branches = () => {
                 border: "none",
               }}
             >
-              {editingBranch ? "Saqlash" : "Qo'shish"}
+              {editingBranch ? t("save") : t("addBranchButton")}
             </Button>
           </div>
         </Form>

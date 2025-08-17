@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Table, Button, Modal, Form, Input, message, Popconfirm, Card, Avatar, Tag, InputNumber, Upload, Image } from "antd"
 import { PlusOutlined, EditOutlined, DeleteOutlined, TrophyOutlined, UploadOutlined } from "@ant-design/icons"
 import axios from "axios"
 
 export default function Students() {
+  const { t, i18n } = useTranslation()
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
@@ -26,11 +28,11 @@ export default function Students() {
       if (response.status === 200 && response.data.Url) {
         return response.data.Url
       } else {
-        throw new Error("API dan sertifikat URL qaytarilmadi")
+        throw new Error(t("uploadError"))
       }
     } catch (error) {
-      console.error("Fayl yuklash xatosi:", error)
-      throw new Error("Sertifikat yuklashda xatolik yuz berdi")
+      console.error(t("uploadError"), error)
+      throw new Error(t("uploadError"))
     }
   }
 
@@ -62,8 +64,8 @@ export default function Students() {
         setStudents([])
       }
     } catch (error) {
-      console.error("O'quvchilarni yuklashda xatolik:", error)
-      message.error("O'quvchilarni yuklashda xatolik yuz berdi")
+      console.error(t("fetchError"), error)
+      message.error(t("fetchError"))
       setStudents([])
     } finally {
       setLoading(false)
@@ -73,11 +75,11 @@ export default function Students() {
   const handleFileChange = ({ file }) => {
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        message.error("Fayl hajmi 5MB dan kichik bo'lishi kerak")
+        message.error(t("imageSizeError"))
         return
       }
       if (!file.type.startsWith("image/")) {
-        message.error("Faqat rasm fayllarini yuklash mumkin")
+        message.error(t("imageTypeError"))
         return
       }
       setFile(file)
@@ -87,24 +89,24 @@ export default function Students() {
 
   const handleSubmit = async (values) => {
     try {
-      setLoading(true);
-      let certificateUrl = values.certificate_url || "";
-  
+      setLoading(true)
+      let certificateUrl = values.certificate_url || ""
+
       if (file) {
         try {
-          certificateUrl = await uploadFile(file);
-          message.success("Sertifikat muvaffaqiyatli yuklandi");
+          certificateUrl = await uploadFile(file)
+          message.success(t("uploadSuccess"))
         } catch (error) {
-          message.error(error.message);
-          setLoading(false);
-          return;
+          message.error(error.message)
+          setLoading(false)
+          return
         }
       } else if (!editingStudent && !certificateUrl) {
-        message.error("Yangi o'quvchi uchun sertifikat yuklash zarur");
-        setLoading(false);
-        return;
+        message.error(t("certificateRequired"))
+        setLoading(false)
+        return
       }
-  
+
       const studentData = {
         name: {
           uz: values.name_uz,
@@ -112,12 +114,12 @@ export default function Students() {
           ru: values.name_ru,
         },
         cefr_level: values.cefr_level,
-        ielts_score: parseFloat(values.ielts_score.toFixed(1)), // Ensure float with 1 decimal place
+        ielts_score: parseFloat(values.ielts_score.toFixed(1)),
         certificate_url: certificateUrl,
-      };
-      console.log("Yuborilgan studentData:", studentData);
-  
-      let response;
+      }
+      console.log("Yuborilgan studentData:", studentData)
+
+      let response
       if (editingStudent) {
         response = await fetch(`https://api.tom-education.uz/certificates/update?id=${editingStudent.id}`, {
           method: "PUT",
@@ -125,7 +127,7 @@ export default function Students() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(studentData),
-        });
+        })
       } else {
         response = await fetch("https://api.tom-education.uz/certificates/create", {
           method: "POST",
@@ -133,27 +135,27 @@ export default function Students() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(studentData),
-        });
+        })
       }
-  
+
       if (response.ok) {
-        message.success(editingStudent ? "O'quvchi muvaffaqiyatli yangilandi" : "O'quvchi muvaffaqiyatli qo'shildi");
-        setModalVisible(false);
-        setEditingStudent(null);
-        setFile(null);
-        setPreviewUrl(null);
-        form.resetFields();
-        fetchStudents();
+        message.success(t("saveStudentSuccess"))
+        setModalVisible(false)
+        setEditingStudent(null)
+        setFile(null)
+        setPreviewUrl(null)
+        form.resetFields()
+        fetchStudents()
       } else {
-        throw new Error("Server javobi muvaffaqiyatsiz");
+        throw new Error(t("saveStudentError"))
       }
     } catch (error) {
-      console.error("O'quvchini saqlashda xatolik:", error);
-      message.error("O'quvchini saqlashda xatolik yuz berdi");
+      console.error(t("saveStudentError"), error)
+      message.error(t("saveStudentError"))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleDelete = async (id) => {
     try {
@@ -161,14 +163,14 @@ export default function Students() {
         method: "DELETE",
       })
       if (response.ok) {
-        message.success("O'quvchi muvaffaqiyatli o'chirildi")
+        message.success(t("deleteStudentSuccess"))
         fetchStudents()
       } else {
-        throw new Error("O'chirish muvaffaqiyatsiz")
+        throw new Error(t("deleteStudentError"))
       }
     } catch (error) {
-      console.error("O'quvchini o'chirishda xatolik:", error)
-      message.error("O'quvchini o'chirishda xatolik yuz berdi")
+      console.error(t("deleteStudentError"), error)
+      message.error(t("deleteStudentError"))
     }
   }
 
@@ -216,9 +218,9 @@ export default function Students() {
 
   const columns = [
     {
-      title: "O'quvchi",
-      dataIndex: ["name", "uz"],
-      key: "name_uz",
+      title: t("studentName"),
+      dataIndex: ["name", i18n.language],
+      key: "name",
       render: (text, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Avatar
@@ -239,7 +241,7 @@ export default function Students() {
       ),
     },
     {
-      title: "CEFR Daraja",
+      title: t("cefrLevel"),
       dataIndex: "cefr_level",
       key: "cefr_level",
       render: (level) => (
@@ -257,7 +259,7 @@ export default function Students() {
       ),
     },
     {
-      title: "IELTS Ball",
+      title: t("ieltsScore"),
       dataIndex: "ielts_score",
       key: "ielts_score",
       render: (score) => {
@@ -281,7 +283,7 @@ export default function Students() {
       },
     },
     {
-      title: "Sertifikat",
+      title: t("certificate"),
       dataIndex: "certificate_url",
       key: "certificate_url",
       render: (url) =>
@@ -291,24 +293,24 @@ export default function Students() {
             onClick={() => window.open(url, "_blank")}
             style={{ color: "#22c55e", padding: 0 }}
           >
-            Ko'rish
+            {t("viewCertificate")}
           </Button>
         ) : (
-          <span style={{ color: "#9ca3af" }}>Mavjud emas</span>
+          <span style={{ color: "#9ca3af" }}>{t("noCertificate")}</span>
         ),
     },
     {
-      title: "Sana",
+      title: t("createdDate"),
       dataIndex: "created_at",
       key: "created_at",
       render: (date) => (
         <span style={{ color: "#6b7280", fontSize: 12 }}>
-          {date ? new Date(date).toLocaleDateString("uz-UZ") : "N/A"}
+          {date ? new Date(date).toLocaleDateString(i18n.language) : "N/A"}
         </span>
       ),
     },
     {
-      title: "Amallar",
+      title: t("actions"),
       key: "actions",
       render: (_, record) => (
         <div style={{ display: "flex", gap: 8 }}>
@@ -323,11 +325,11 @@ export default function Students() {
             }}
           />
           <Popconfirm
-            title="O'quvchini o'chirish"
-            description="Haqiqatan ham bu o'quvchini o'chirmoqchimisiz?"
+            title={t("deleteStudent")}
+            description={t("deleteStudentConfirm")}
             onConfirm={() => handleDelete(record.id)}
-            okText="Ha"
-            cancelText="Yo'q"
+            okText={t("okText")}
+            cancelText={t("cancelText")}
             okButtonProps={{ style: { background: "#dc2626", borderColor: "#dc2626" } }}
           >
             <Button danger size="small" icon={<DeleteOutlined />} />
@@ -355,7 +357,7 @@ export default function Students() {
             fontWeight: "bold",
           }}
         >
-          O'quvchilar
+          {t("studentsHeader")}
         </h2>
         <Button
           type="primary"
@@ -367,13 +369,13 @@ export default function Students() {
             borderRadius: 8,
           }}
         >
-          Yangi o'quvchi
+          {t("addStudentButton")}
         </Button>
       </div>
 
       <Card style={{ borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
         <div style={{ marginBottom: 16 }}>
-          Jami studentlar soni: {students.length}
+          {t("totalStudentsLabel")}: {students.length}
         </div>
         <Table
           columns={columns}
@@ -387,7 +389,7 @@ export default function Students() {
       <Modal
         title={
           <span style={{ color: "#16a34a", fontSize: 18, fontWeight: "bold" }}>
-            {editingStudent ? "O'quvchini tahrirlash" : "Yangi o'quvchi qo'shish"}
+            {editingStudent ? t("editStudent") : t("addStudentButton")}
           </span>
         }
         open={modalVisible}
@@ -404,45 +406,43 @@ export default function Students() {
         <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ marginTop: 20 }}>
           <Form.Item
             name="name_uz"
-            label="Ism (O'zbekcha)"
-            rules={[{ required: true, message: "Ism (O'zbekcha) kiritish majburiy!" }]}
+            label={t("nameUzLabel")}
+            rules={[{ required: true, message: t("nameUzRequired") }]}
           >
-            <Input placeholder="Ism (O'zbekcha)" style={{ borderRadius: "6px" }} />
+            <Input placeholder={t("nameUzLabel")} style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <Form.Item
             name="name_en"
-            label="Ism (Inglizcha)"
-            rules={[{ required: true, message: "Ism (Inglizcha) kiritish majburiy!" }]}
+            label={t("nameEnLabel")}
+            rules={[{ required: true, message: t("nameEnRequired") }]}
           >
-            <Input placeholder="Ism (Inglizcha)" style={{ borderRadius: "6px" }} />
+            <Input placeholder={t("nameEnLabel")} style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <Form.Item
             name="name_ru"
-            label="Ism (Ruscha)"
-            rules={[{ required: true, message: "Ism (Ruscha) kiritish majburiy!" }]}
+            label={t("nameRuLabel")}
+            rules={[{ required: true, message: t("nameRuRequired") }]}
           >
-            <Input placeholder="Ism (Ruscha)" style={{ borderRadius: "6px" }} />
+            <Input placeholder={t("nameRuLabel")} style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <Form.Item
             name="cefr_level"
-            label="CEFR Daraja"
-            rules={[{ required: true, message: "CEFR daraja kiritish majburiy!" }]}
+            label={t("cefrLevelLabel")}
+            rules={[{ required: true, message: t("cefrLevelRequired") }]}
           >
             <Input placeholder="A1, A2, B1, B2, C1, C2" style={{ borderRadius: "6px" }} />
           </Form.Item>
 
           <Form.Item
             name="ielts_score"
-            label="IELTS Ball"
-            rules={[
-              { required: true, message: "IELTS ball kiritish majburiy!" },
-            ]}
+            label={t("ieltsScoreLabel")}
+            rules={[{ required: true, message: t("ieltsScoreRequired") }]}
           >
             <InputNumber
-              placeholder="IELTS ball (masalan, 8.0, 8.5)"
+              placeholder={t("ieltsScoreLabel")}
               min={0}
               max={9}
               step={0.5}
@@ -452,8 +452,8 @@ export default function Students() {
 
           <Form.Item
             name="certificate"
-            label="Sertifikat rasmni yuklash"
-            rules={[{ required: !editingStudent, message: "Sertifikat rasmni yuklash zarur" }]}
+            label={t("certificateUploadLabel")}
+            rules={[{ required: !editingStudent, message: t("certificateRequired") }]}
           >
             <Upload
               beforeUpload={() => false}
@@ -461,7 +461,7 @@ export default function Students() {
               accept="image/*"
               showUploadList={false}
             >
-              <Button icon={<UploadOutlined />}>Rasm tanlash</Button>
+              <Button icon={<UploadOutlined />}>{t("certificateUploadLabel")}</Button>
               {file && <span style={{ marginLeft: "10px" }}>{file.name}</span>}
             </Upload>
             {file && (
@@ -472,16 +472,16 @@ export default function Students() {
                   setPreviewUrl(null)
                 }}
               >
-                Rasmni olib tashlash
+                {t("removeImage")}
               </Button>
             )}
           </Form.Item>
 
           {(previewUrl || editingStudent?.certificate_url) && (
-            <Form.Item label="Rasm oldindan ko'rish">
+            <Form.Item label={t("imagePreview")}>
               <Image
                 src={previewUrl || editingStudent?.certificate_url}
-                alt="Sertifikat oldindan ko'rish"
+                alt={t("imagePreview")}
                 style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "6px", marginTop: "10px" }}
                 fallback="https://via.placeholder.com/150?text=Rasm+yuklanmadi"
               />
@@ -489,8 +489,8 @@ export default function Students() {
           )}
 
           {editingStudent && (
-            <Form.Item name="certificate_url" label="Mavjud sertifikat URL">
-              <Input placeholder="Sertifikat URL manzili" style={{ borderRadius: "6px" }} disabled />
+            <Form.Item name="certificate_url" label={t("certificateUrlLabel")}>
+              <Input placeholder={t("certificateUrlLabel")} style={{ borderRadius: "6px" }} disabled />
             </Form.Item>
           )}
 
@@ -505,7 +505,7 @@ export default function Students() {
               }}
               style={{ marginRight: 8, borderRadius: "6px" }}
             >
-              Bekor qilish
+              {t("cancel")}
             </Button>
             <Button
               type="primary"
@@ -517,7 +517,7 @@ export default function Students() {
                 borderRadius: "6px",
               }}
             >
-              {editingStudent ? "Yangilash" : "Qo'shish"}
+              {editingStudent ? t("save") : t("addStudentButton")}
             </Button>
           </Form.Item>
         </Form>

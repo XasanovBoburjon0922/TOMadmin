@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 
 const CourseApplications = () => {
+  const { t } = useTranslation()
   const [applications, setApplications] = useState([])
+  const [courses, setCourses] = useState([]) // State for courses
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({
@@ -11,9 +14,16 @@ const CourseApplications = () => {
     full_name: "",
     phone: "",
   })
+  const [addForm, setAddForm] = useState({
+    course_id: "",
+    full_name: "",
+    phone: "",
+  })
+  const [showAddForm, setShowAddForm] = useState(false)
 
   useEffect(() => {
     fetchApplications()
+    fetchCourses() // Fetch courses for the dropdown
   }, [])
 
   const fetchApplications = async () => {
@@ -23,9 +33,19 @@ const CourseApplications = () => {
       const data = await response.json()
       setApplications(data.applications || [])
     } catch (error) {
-      console.error("Arizalarni yuklashda xatolik:", error)
+      console.error(t("fetchError"), error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch("https://api.tom-education.uz/courses/list") // Adjust API endpoint
+      const data = await response.json()
+      setCourses(data.courses || [])
+    } catch (error) {
+      console.error("Kurslarni yuklashda xatolik:", error)
     }
   }
 
@@ -57,12 +77,12 @@ const CourseApplications = () => {
         setEditForm({ course_id: "", full_name: "", phone: "" })
       }
     } catch (error) {
-      console.error("Arizani yangilashda xatolik:", error)
+      console.error(t("fetchError"), error)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm("Ushbu arizani o'chirishni xohlaysizmi?")) {
+    if (window.confirm(t("deleteConfirm", "Ushbu arizani o'chirishni xohlaysizmi?"))) {
       try {
         const response = await fetch(`https://api.tom-education.uz/course_applications/delete/${id}`, {
           method: "DELETE",
@@ -72,14 +92,43 @@ const CourseApplications = () => {
           await fetchApplications()
         }
       } catch (error) {
-        console.error("Arizani o'chirishda xatolik:", error)
+        console.error(t("fetchError"), error)
       }
+    }
+  }
+
+  const handleAdd = async () => {
+    try {
+      const response = await fetch("https://api.tom-education.uz/course_applications/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(addForm),
+      })
+
+      if (response.ok) {
+        await fetchApplications()
+        setAddForm({ course_id: "", full_name: "", phone: "" })
+        setShowAddForm(false)
+        alert(t("applicationSuccess"))
+      } else {
+        alert(t("applicationError"))
+      }
+    } catch (error) {
+      console.error(t("applicationError"), error)
+      alert(t("applicationError"))
     }
   }
 
   const cancelEdit = () => {
     setEditingId(null)
     setEditForm({ course_id: "", full_name: "", phone: "" })
+  }
+
+  const cancelAdd = () => {
+    setShowAddForm(false)
+    setAddForm({ course_id: "", full_name: "", phone: "" })
   }
 
   if (loading) {
@@ -96,8 +145,8 @@ const CourseApplications = () => {
       <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Kurs Arizalari</h1>
-            <p className="text-green-100 text-lg">Barcha kurs arizalarini boshqaring</p>
+            <h1 className="text-3xl font-bold mb-2">{t("courseApplications")}</h1>
+            <p className="text-green-100 text-lg">{t("manageApplications", "Barcha kurs arizalarini boshqaring")}</p>
           </div>
           <div className="hidden md:block">
             <svg className="w-16 h-16 text-white/20" fill="currentColor" viewBox="0 0 20 20">
@@ -111,16 +160,86 @@ const CourseApplications = () => {
         </div>
       </div>
 
+      {/* Add Application Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+        >
+          {t("addApplication")}
+        </button>
+      </div>
+
+      {/* Add Application Form */}
+      {showAddForm && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border-0">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t("addApplicationTitle")}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t("applicantName")}</label>
+              <input
+                type="text"
+                value={addForm.full_name}
+                onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
+                className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t("applicantPhone")}</label>
+              <input
+                type="text"
+                value={addForm.phone}
+                onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t("selectCourse")}</label>
+              <select
+                value={addForm.course_id}
+                onChange={(e) => setAddForm({ ...addForm, course_id: e.target.value })}
+                className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">{t("selectCourse")}</option>
+                {courses.length > 0 ? (
+                  courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.name?.[i18n.language] || course.name.en}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>{t("noCoursesAvailable")}</option>
+                )}
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 flex space-x-2">
+            <button
+              onClick={handleAdd}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+            >
+              {t("addApplicationButton")}
+            </button>
+            <button
+              onClick={cancelAdd}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+            >
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Statistics */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Umumiy ma'lumotlar</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{t("overview", "Umumiy ma'lumotlar")}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-green-50 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm mb-1">Jami arizalar</p>
+                <p className="text-gray-500 text-sm mb-1">{t("totalApplications", "Jami arizalar")}</p>
                 <p className="text-2xl font-bold text-green-600">{applications.length}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -135,11 +254,10 @@ const CourseApplications = () => {
               </div>
             </div>
           </div>
-
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm mb-1">Bugungi arizalar</p>
+                <p className="text-gray-500 text-sm mb-1">{t("todayApplications", "Bugungi arizalar")}</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {
                     applications.filter((app) => {
@@ -162,39 +280,13 @@ const CourseApplications = () => {
               </div>
             </div>
           </div>
-
-          {/* <div className="bg-purple-50 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm mb-1">O'rtacha narx</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {applications.length > 0
-                    ? Math.round(
-                        applications.reduce((sum, app) => sum + app.price, 0) / applications.length,
-                      ).toLocaleString()
-                    : 0}{" "}
-                  so'm
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div> */}
         </div>
       </div>
 
       {/* Applications List */}
       <div className="bg-white rounded-2xl shadow-sm border-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800">Arizalar ro'yxati</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{t("applicationsList", "Arizalar ro'yxati")}</h2>
         </div>
 
         <div className="overflow-x-auto">
@@ -202,16 +294,16 @@ const CourseApplications = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ariza beruvchi
+                  {t("applicantName")}
                 </th>
-                {/* <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kurs</th> */}
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Telefon
+                  {t("applicantPhone")}
                 </th>
-                {/* <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Narx</th> */}
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sana</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amallar
+                  {t("createdDate")}
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t("actions")}
                 </th>
               </tr>
             </thead>
@@ -249,10 +341,6 @@ const CourseApplications = () => {
                       </div>
                     </div>
                   </td>
-                  {/* <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{application.name.uz || application.name.en}</div>
-                    <div className="text-sm text-gray-500">{application.duration.uz || application.duration.en}</div>
-                  </td> */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     {editingId === application.id ? (
                       <input
@@ -265,9 +353,6 @@ const CourseApplications = () => {
                       <div className="text-sm text-gray-900">{application.phone}</div>
                     )}
                   </td>
-                  {/* <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{application.price.toLocaleString()} so'm</div>
-                  </td> */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(application.created_at).toLocaleDateString("uz-UZ")}
                   </td>
@@ -278,13 +363,13 @@ const CourseApplications = () => {
                           onClick={() => handleUpdate(application.id)}
                           className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs transition-colors duration-200"
                         >
-                          Saqlash
+                          {t("save")}
                         </button>
                         <button
                           onClick={cancelEdit}
                           className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-lg text-xs transition-colors duration-200"
                         >
-                          Bekor qilish
+                          {t("cancel")}
                         </button>
                       </div>
                     ) : (
@@ -334,8 +419,8 @@ const CourseApplications = () => {
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Arizalar topilmadi</h3>
-            <p className="mt-1 text-sm text-gray-500">Hozircha hech qanday ariza yo'q.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">{t("noApplications", "Arizalar topilmadi")}</h3>
+            <p className="mt-1 text-sm text-gray-500">{t("noApplicationsMessage", "Hozircha hech qanday ariza yo'q.")}</p>
           </div>
         )}
       </div>
