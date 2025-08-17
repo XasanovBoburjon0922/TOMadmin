@@ -82,6 +82,7 @@ const resources = {
       russian: "Russian",
       noData: "No data available",
       totalStudents: "Total students",
+      courseApplications: "All requests"
     },
   },
   uz: {
@@ -162,7 +163,8 @@ const resources = {
       english: "Inglizcha",
       uzbek: "O'zbekcha",
       russian: "Ruscha",
-      noData: "Ma'lumot yo'q"
+      noData: "Ma'lumot yo'q",
+      courseApplications: "Barcha so'rovlar"
     },
   },
   ru: {
@@ -244,6 +246,7 @@ const resources = {
       russian: "Русский",
       noData: "Нет информации",
       totalStudents: "Всего студентов",
+      courseApplications: "Все запросы"
     },
   },
 };

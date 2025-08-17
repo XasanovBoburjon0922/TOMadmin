@@ -12,6 +12,7 @@ import {
   LogoutOutlined,
   FileTextOutlined,
 } from "@ant-design/icons"
+import { useTranslation } from "react-i18next"
 import Dashboard from "./pages/Dashboard"
 import Teachers from "./pages/Teachers"
 import Branches from "./pages/Branches"
@@ -20,10 +21,12 @@ import Gallery from "./pages/Gallery"
 import Students from "./pages/Students"
 import Login from "./pages/Login"
 import CourseApplications from "./pages/Application"
+import LanguageSwitcher from "./components/LanguageSwitcher" // Import the LanguageSwitcher component
 
 const { Header, Sider, Content } = Layout
 
 export default function App() {
+  const { t } = useTranslation() // Hook to access translations
   const [collapsed, setCollapsed] = useState(false)
   const [selectedKey, setSelectedKey] = useState("1")
   const [loading, setLoading] = useState(false)
@@ -33,37 +36,37 @@ export default function App() {
     {
       key: "1",
       icon: <DashboardOutlined />,
-      label: "Dashboard",
+      label: t("dashboard"), // Use translation key
     },
     {
       key: "2",
       icon: <TeamOutlined />,
-      label: "O'qituvchilar",
+      label: t("teachers"), // Use translation key
     },
     {
       key: "3",
       icon: <BankOutlined />,
-      label: "Filiallar",
+      label: t("branches"), // Use translation key
     },
     {
       key: "4",
       icon: <BookOutlined />,
-      label: "Kurslar",
+      label: t("courses"), // Use translation key
     },
     {
       key: "5",
       icon: <PictureOutlined />,
-      label: "Galereya",
+      label: t("gallery"), // Use translation key
     },
     {
       key: "6",
       icon: <UserOutlined />,
-      label: "O'quvchilar",
+      label: t("totalStudents"), // Use translation key
     },
     {
       key: "7",
       icon: <FileTextOutlined />,
-      label: "Kurs Arizalari",
+      label: t("courseApplications"), // Use translation key
     },
   ]
 
@@ -164,6 +167,7 @@ export default function App() {
             Tom Education
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <LanguageSwitcher /> {/* Add LanguageSwitcher before admin avatar */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div
                 style={{
@@ -178,7 +182,7 @@ export default function App() {
               >
                 <UserOutlined style={{ color: "white" }} />
               </div>
-              <span style={{ color: "#374151" }}>Admin</span>
+              <span style={{ color: "#374151" }}>Admin</span> {/* Use translation for "Admin" */}
             </div>
             <LogoutOutlined
               style={{
