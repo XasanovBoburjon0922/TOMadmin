@@ -399,9 +399,6 @@ const Teachers = () => {
           loading={loading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => t("paginationTeachersTotal", { range0: range[0], range1: range[1], total }),
           }}
           locale={{
             emptyText: t("noTeachers"),
