@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -24,11 +23,10 @@ import {
   UploadOutlined,
   BookOutlined,
 } from "@ant-design/icons"
-import { listCourses, createCourse, updateCourse, deleteCourse } from "../api/api"
 
 const { Title } = Typography
 
-// API function for file upload with enhanced error handling
+// API function for file upload
 const uploadFile = async (file) => {
   const formData = new FormData()
   formData.append("file", file)
@@ -53,7 +51,7 @@ const uploadFile = async (file) => {
       fileSize: file.size,
       fileType: file.type,
     })
-    return "" // Fallback to empty string if upload fails
+    return ""
   }
 }
 
@@ -72,15 +70,23 @@ const Courses = () => {
   const fetchCourses = async () => {
     setLoading(true)
     try {
-      const response = await listCourses()
-      const data = response?.data?.courses || []
-      setCourses(Array.isArray(data) ? data : [])
+      const response = await fetch("https://api.tom-education.uz/courses/list", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setCourses(Array.isArray(data.courses) ? data.courses : [])
+      } else {
+        throw new Error(`Failed to fetch courses: ${data.message || "Unknown error"}`)
+      }
     } catch (error) {
       console.error("Fetch Error:", {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data,
-        url: error.config?.url,
       })
       message.error(t("fetchError") + `: ${error.message}`)
       setCourses([])
@@ -94,33 +100,37 @@ const Courses = () => {
     const descriptionArray = values.description.split("\n").filter(line => line.trim() !== "")
 
     try {
-      let response
-      let payload
-
-      // Try multipart/form-data first
-      const formData = new FormData()
-      formData.append("name", JSON.stringify(values.name))
-      formData.append("branch_description", JSON.stringify(values.branch_description))
-      formData.append("duration", JSON.stringify(values.duration))
-      formData.append("description", JSON.stringify(descriptionArray))
-      // Send price as a number directly
-      formData.append("price", parseFloat(values.price))
-      formData.append("type", values.type || "")
-
       let pictureUrl = editingCourse?.picture_url || ""
       if (values.file?.[0]?.originFileObj) {
         pictureUrl = await uploadFile(values.file[0].originFileObj)
       }
-      formData.append("picture_url", pictureUrl)
 
-      if (editingCourse) {
-        response = await updateCourse(editingCourse.id, formData)
-      } else {
-        response = await createCourse(formData)
+      const payload = {
+        name: values.name,
+        branch_description: values.branch_description,
+        duration: values.duration,
+        description: descriptionArray,
+        price: parseFloat(values.price),
+        type: values.type || "",
+        picture_url: pictureUrl,
       }
 
+      const response = await fetch(
+        editingCourse
+          ? `https://api.tom-education.uz/courses/update?id=${editingCourse.id}`
+          : "https://api.tom-education.uz/courses/create",
+        {
+          method: editingCourse ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      )
+
       if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(`Request failed with status ${response.status}: ${errorData.message || "Unknown error"}`)
       }
 
       message.success(editingCourse ? t("save") : t("addCourse"))
@@ -132,7 +142,6 @@ const Courses = () => {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data,
-        url: error.config?.url,
         payload: {
           name: values.name,
           branch_description: values.branch_description,
@@ -144,65 +153,24 @@ const Courses = () => {
         },
       })
       message.error(t("fetchError") + `: ${error.message}`)
-
-      // If multipart fails with 400, try JSON payload
-      if (error.response?.status === 400) {
-        try {
-          const jsonPayload = {
-            name: values.name,
-            branch_description: values.branch_description,
-            duration: values.duration,
-            description: descriptionArray,
-            price: parseFloat(values.price),
-            type: values.type || "",
-            picture_url: pictureUrl,
-          }
-          const jsonResponse = await fetch(editingCourse ? `/courses/${editingCourse.id}` : "/courses", {
-            method: editingCourse ? "PUT" : "POST",
-            headers: {
-              "Content-Type": "application/json",
-              // Add Authorization if needed: "Authorization": `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: JSON.stringify(jsonPayload),
-          })
-          if (!jsonResponse.ok) throw new Error(`JSON request failed with status ${jsonResponse.status}`)
-          message.success(editingCourse ? t("save") : t("addCourse"))
-          fetchCourses()
-          setIsModalOpen(false)
-          form.resetFields()
-        } catch (jsonError) {
-          console.error("JSON Submit Error:", {
-            message: jsonError.message,
-            status: jsonError.response?.status,
-            data: jsonError.response?.data,
-            payload: jsonPayload,
-          })
-          message.error(t("fetchError") + `: ${jsonError.message}`)
-        }
-      }
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEdit = (course) => {
-    setEditingCourse(course)
-    form.setFieldsValue({
-      name: course.name,
-      branch_description: course.branch_description,
-      duration: course.duration,
-      description: course.description.join("\n"),
-      price: course.price,
-      type: course.type,
-      file: course.picture_url ? [{ url: course.picture_url, status: "done" }] : [],
-    })
-    setIsModalOpen(true)
-  }
-
   const handleDelete = async (id) => {
     setLoading(true)
     try {
-      await deleteCourse(id)
+      const response = await fetch(`https://api.tom-education.uz/courses/delete?id=${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(`Failed to delete course: ${errorData.message || "Unknown error"}`)
+      }
       message.success(t("delete"))
       fetchCourses()
     } catch (error) {
@@ -210,7 +178,6 @@ const Courses = () => {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data,
-        url: error.config?.url,
       })
       message.error(t("fetchError") + `: ${error.message}`)
     } finally {
@@ -314,6 +281,20 @@ const Courses = () => {
       ),
     },
   ]
+
+  const handleEdit = (course) => {
+    setEditingCourse(course)
+    form.setFieldsValue({
+      name: course.name,
+      branch_description: course.branch_description,
+      duration: course.duration,
+      description: course.description.join("\n"),
+      price: course.price,
+      type: course.type,
+      file: course.picture_url ? [{ url: course.picture_url, status: "done" }] : [],
+    })
+    setIsModalOpen(true)
+  }
 
   return (
     <div className="space-y-6">
@@ -515,7 +496,7 @@ const Courses = () => {
                     if (fileList && fileList.length > 0) {
                       const file = fileList[0].originFileObj
                       const isImage = file.type.startsWith("image/")
-                      const isLt2M = file.size / 1024 / 1024 < 2 // 2MB limit
+                      const isLt2M = file.size / 1024 / 1024 < 2
                       if (!isImage) {
                         return Promise.reject(new Error(t("uploadImageError")))
                       }
