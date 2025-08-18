@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next"
 const CourseApplications = () => {
   const { t } = useTranslation()
   const [applications, setApplications] = useState([])
-  const [courses, setCourses] = useState([]) // State for courses
+  const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({
@@ -20,10 +20,14 @@ const CourseApplications = () => {
     phone: "",
   })
   const [showAddForm, setShowAddForm] = useState(false)
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const pageSizeOptions = [5, 10, 20, 50]
 
   useEffect(() => {
     fetchApplications()
-    fetchCourses() // Fetch courses for the dropdown
+    fetchCourses()
   }, [])
 
   const fetchApplications = async () => {
@@ -41,7 +45,7 @@ const CourseApplications = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch("https://api.tom-education.uz/courses/list") // Adjust API endpoint
+      const response = await fetch("https://api.tom-education.uz/courses/list")
       const data = await response.json()
       setCourses(data.courses || [])
     } catch (error) {
@@ -90,6 +94,10 @@ const CourseApplications = () => {
 
         if (response.ok) {
           await fetchApplications()
+          // Adjust current page if necessary
+          if (applications.length <= (currentPage - 1) * pageSize + 1 && currentPage > 1) {
+            setCurrentPage(currentPage - 1)
+          }
         }
       } catch (error) {
         console.error(t("fetchError"), error)
@@ -112,6 +120,8 @@ const CourseApplications = () => {
         setAddForm({ course_id: "", full_name: "", phone: "" })
         setShowAddForm(false)
         alert(t("applicationSuccess"))
+        // Move to the last page to show the new application
+        setCurrentPage(Math.ceil((applications.length + 1) / pageSize))
       } else {
         alert(t("applicationError"))
       }
@@ -129,6 +139,23 @@ const CourseApplications = () => {
   const cancelAdd = () => {
     setShowAddForm(false)
     setAddForm({ course_id: "", full_name: "", phone: "" })
+  }
+
+  // Pagination logic
+  const totalApplications = applications.length
+  const totalPages = Math.ceil(totalApplications / pageSize)
+  const paginatedApplications = applications.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
+  const handlePageSizeChange = (e) => {
+    setPageSize(Number(e.target.value))
+    setCurrentPage(1) // Reset to first page when page size changes
   }
 
   if (loading) {
@@ -160,17 +187,6 @@ const CourseApplications = () => {
         </div>
       </div>
 
-      {/* Add Application Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
-        >
-          {t("addApplication")}
-        </button>
-      </div>
-
-      {/* Add Application Form */}
       {showAddForm && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border-0">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t("addApplicationTitle")}</h2>
@@ -214,12 +230,12 @@ const CourseApplications = () => {
             </div>
           </div>
           <div className="mt-4 flex space-x-2">
-            <button
+            {/* <button
               onClick={handleAdd}
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
             >
               {t("addApplicationButton")}
-            </button>
+            </button> */}
             <button
               onClick={cancelAdd}
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
@@ -308,7 +324,7 @@ const CourseApplications = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {applications.map((application) => (
+              {paginatedApplications.map((application) => (
                 <tr key={application.id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -409,7 +425,7 @@ const CourseApplications = () => {
           </table>
         </div>
 
-        {applications.length === 0 && (
+        {applications.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -421,6 +437,50 @@ const CourseApplications = () => {
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">{t("noApplications", "Arizalar topilmadi")}</h3>
             <p className="mt-1 text-sm text-gray-500">{t("noApplicationsMessage", "Hozircha hech qanday ariza yo'q.")}</p>
+          </div>
+        ) : (
+          <div className="flex justify-between items-center p-6">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-gray-600">{t("itemsPerPage")}</label>
+              <select
+                value={pageSize}
+                onChange={handlePageSizeChange}
+                className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {pageSizeOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${
+                  currentPage === 1
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600 text-white"
+                }`}
+              >
+                {t("previous")}
+              </button>
+              <span className="text-sm text-gray-600">
+                {t("page")} {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${
+                  currentPage === totalPages
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600 text-white"
+                }`}
+              >
+                {t("next")}
+              </button>
+            </div>
           </div>
         )}
       </div>

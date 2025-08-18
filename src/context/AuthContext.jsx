@@ -1,8 +1,7 @@
 "use client"
 
-import React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-
+import React, { createContext, useContext, useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 
 const AuthContext = createContext(undefined)
 
@@ -18,44 +17,59 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    // Check if user is already logged in
-    const savedAuth = localStorage.getItem("isAuthenticated")
+    // Check for token on page load
+    const token = localStorage.getItem("token")
     const savedUser = localStorage.getItem("user")
 
-    if (savedAuth === "true" && savedUser) {
+    if (token && savedUser) {
       setIsAuthenticated(true)
       setUser(JSON.parse(savedUser))
     }
-
     setIsLoading(false)
   }, [])
 
-  const login = (username, password) => {
-    // Simple hardcoded authentication
-    if (username === "admin" && password === "admin") {
+  const login = async (name, password) => {
+    try {
+      const response = await fetch("https://api.tom-education.uz/users/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, password }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Invalid username or password")
+      }
+
+      const data = await response.json()
+      const { token, user } = data
+
       setIsAuthenticated(true)
-      const userData = { username }
-      setUser(userData)
-
-      // Save to localStorage
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("user", JSON.stringify(userData))
-
+      setUser(user)
+      localStorage.setItem("token", token)
+      localStorage.setItem("user", JSON.stringify(user))
       return true
+    } catch (error) {
+      console.error("Login error:", error.message)
+      return false
     }
-    return false
   }
 
   const logout = () => {
     setIsAuthenticated(false)
     setUser(null)
-    localStorage.removeItem("isAuthenticated")
+    localStorage.removeItem("token")
     localStorage.removeItem("user")
+    navigate("/")
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, user, isLoading }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, user, isLoading }}>
+      {children}
+    </AuthContext.Provider>
   )
 }

@@ -14,6 +14,10 @@ const Gallery = () => {
   const [editingGallery, setEditingGallery] = useState(null)
   const [viewMode, setViewMode] = useState("grid")
   const [form] = Form.useForm()
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const pageSizeOptions = [5, 10, 20, 50]
 
   useEffect(() => {
     fetchGalleries()
@@ -37,15 +41,12 @@ const Gallery = () => {
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
-      let pictureUrl = editingGallery?.picture_url // Keep existing URL for edits if no new file
+      let pictureUrl = editingGallery?.picture_url
 
       if (values.file && values.file.fileList && values.file.fileList.length > 0) {
         const fileObj = values.file.fileList[0]
         const actualFile = fileObj.originFileObj || fileObj
-
-        console.log("[v0] Uploading file:", actualFile)
         const uploadResponse = await uploadFile(actualFile)
-        console.log("[v0] Upload response:", uploadResponse)
         pictureUrl = uploadResponse
 
         if (!pictureUrl) {
@@ -53,10 +54,7 @@ const Gallery = () => {
         }
       }
 
-      // Step 2: Create or update gallery with picture_url
       const galleryData = { picture_url: pictureUrl }
-      console.log("[v0] Gallery data:", galleryData)
-
       if (editingGallery) {
         await updateGallery(editingGallery.id, galleryData)
         message.success(t("save"))
@@ -67,6 +65,7 @@ const Gallery = () => {
       fetchGalleries()
       setIsModalOpen(false)
       form.resetFields()
+      setCurrentPage(1) // Reset to first page after adding/editing
     } catch (error) {
       console.error("Submit error:", error.response?.data || error.message)
       message.error(error.message || t("fetchError"))
@@ -77,7 +76,7 @@ const Gallery = () => {
 
   const handleEdit = (gallery) => {
     setEditingGallery(gallery)
-    form.setFieldsValue({}) // Reset form for new file upload
+    form.setFieldsValue({})
     setIsModalOpen(true)
   }
 
@@ -87,12 +86,33 @@ const Gallery = () => {
       await deleteGallery(id)
       message.success(t("delete"))
       fetchGalleries()
+      // Adjust current page if necessary
+      if (galleries.length <= (currentPage - 1) * pageSize + 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1)
+      }
     } catch (error) {
       console.error("Delete error:", error)
       message.error(t("fetchError"))
     } finally {
       setLoading(false)
     }
+  }
+
+  // Pagination logic
+  const totalGalleries = galleries.length
+  const totalPages = Math.ceil(totalGalleries / pageSize)
+  const paginatedGalleries = galleries.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
+  const handlePageSizeChange = (e) => {
+    setPageSize(Number(e.target.value))
+    setCurrentPage(1) // Reset to first page when page size changes
   }
 
   const columns = [
@@ -150,12 +170,12 @@ const Gallery = () => {
 
   const GridView = () => (
     <Row gutter={[24, 24]}>
-      {galleries.length === 0 ? (
+      {paginatedGalleries.length === 0 ? (
         <Col span={24}>
           <Empty description={t("noGalleryItems")} className="py-12" />
         </Col>
       ) : (
-        galleries.map((item) => (
+        paginatedGalleries.map((item) => (
           <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
             <Card
               hoverable
@@ -247,11 +267,58 @@ const Gallery = () => {
 
       <Card className="border-0 shadow-sm" style={{ borderRadius: "16px" }} bodyStyle={{ padding: "24px" }}>
         {viewMode === "grid" ? (
-          <GridView />
+          <>
+            <GridView />
+            {totalGalleries > 0 && (
+              <div className="flex justify-between items-center mt-6">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600">{t("itemsPerPage")}</label>
+                  <select
+                    value={pageSize}
+                    onChange={handlePageSizeChange}
+                    className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    {pageSizeOptions.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${
+                      currentPage === 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
+                  >
+                    {t("previous")}
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    {t("page")} {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${
+                      currentPage === totalPages
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
+                  >
+                    {t("next")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <Table
             columns={columns}
-            dataSource={galleries}
+            dataSource={paginatedGalleries}
             rowKey="id"
             loading={loading}
             pagination={false}
@@ -291,7 +358,7 @@ const Gallery = () => {
               accept="image/*"
               beforeUpload={(file) => {
                 const isImage = file.type.startsWith("image/")
-                const isLt10M = file.size / 1024 / 1024 < 10 // Limit to 10MB
+                const isLt10M = file.size / 1024 / 1024 < 10
                 if (!isImage) {
                   message.error(t("imageOnly"))
                   return false
@@ -300,7 +367,7 @@ const Gallery = () => {
                   message.error(t("fileTooLarge"))
                   return false
                 }
-                return false // Prevent auto upload, handle manually
+                return false
               }}
               className="rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400"
             >

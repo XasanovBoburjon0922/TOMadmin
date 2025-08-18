@@ -382,7 +382,9 @@ export default function Students() {
           dataSource={students}
           loading={loading}
           rowKey="id"
-          pagination={false}
+          pagination={{
+            pageSize: 10,
+          }}
         />
       </Card>
 

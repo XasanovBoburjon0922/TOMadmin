@@ -11,22 +11,22 @@ import "../src/18n/config"
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <ConfigProvider
-        locale={enUS}
-        theme={{
-          token: {
-            colorPrimary: "#1890ff",
-            borderRadius: 4,
-          },
-        }}
-      >
-        <BrowserRouter>
+    <ConfigProvider
+      locale={enUS}
+      theme={{
+        token: {
+          colorPrimary: "#1890ff",
+          borderRadius: 4,
+        },
+      }}
+    >
+      <BrowserRouter>
+        <AuthProvider>
           <ProtectedRoute>
             <App />
           </ProtectedRoute>
-        </BrowserRouter>
-      </ConfigProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ConfigProvider>
   </React.StrictMode>,
 );

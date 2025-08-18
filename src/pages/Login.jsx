@@ -1,13 +1,16 @@
 "use client"
+
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "../context/AuthContext"
+import { useNavigate } from "react-router-dom"
 import LanguageSwitcher from "../components/LanguageSwitcher"
 
 const Login = () => {
   const { t } = useTranslation()
   const { login } = useAuth()
-  const [username, setUsername] = useState("")
+  const navigate = useNavigate()
+  const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -18,12 +21,14 @@ const Login = () => {
     setLoading(true)
 
     try {
-      const success = login(username, password)
-      if (!success) {
-        setError("Invalid username or password")
+      const success = await login(name, password)
+      if (success) {
+        navigate("/dashboard")
+      } else {
+        setError(t("invalidCredentials", "Invalid name or password"))
       }
     } catch (err) {
-      setError("Login failed. Please try again.")
+      setError(t("loginFailed", "Login failed. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -66,8 +71,8 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Username field */}
               <div>
-                <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
-                  {t("username")}
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                  {t("name")}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -81,12 +86,12 @@ const Login = () => {
                     </svg>
                   </div>
                   <input
-                    id="username"
+                    id="name"
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 bg-gray-50 focus:bg-white"
-                    placeholder={t("username")}
+                    placeholder={t("name")}
                     required
                   />
                 </div>
@@ -157,18 +162,6 @@ const Login = () => {
               </button>
             </form>
 
-            {/* Demo credentials */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-xs text-gray-600 text-center mb-2 font-medium">Demo Credentials:</p>
-              <div className="text-xs text-gray-500 text-center space-y-1">
-                <div>
-                  Username: <span className="font-mono bg-gray-200 px-1 rounded">admin</span>
-                </div>
-                <div>
-                  Password: <span className="font-mono bg-gray-200 px-1 rounded">admin</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
