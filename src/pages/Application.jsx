@@ -23,19 +23,24 @@ const CourseApplications = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [totalCount, setTotalCount] = useState(0) // New state for total_count
   const pageSizeOptions = [5, 10, 20, 50]
 
   useEffect(() => {
     fetchApplications()
     fetchCourses()
-  }, [])
+  }, [currentPage, pageSize]) // Re-fetch when page or page size changes
 
   const fetchApplications = async () => {
     setLoading(true)
     try {
-      const response = await fetch("https://api.tom-education.uz/course_applications/list")
+      const offset = (currentPage - 1) * pageSize
+      const response = await fetch(
+        `https://api.tom-education.uz/course_applications/list?offset=${offset}&limit=${pageSize}`
+      )
       const data = await response.json()
       setApplications(data.applications || [])
+      setTotalCount(data.total_count || 0) // Set total_count from API response
     } catch (error) {
       console.error(t("fetchError"), error)
     } finally {
@@ -121,7 +126,7 @@ const CourseApplications = () => {
         setShowAddForm(false)
         alert(t("applicationSuccess"))
         // Move to the last page to show the new application
-        setCurrentPage(Math.ceil((applications.length + 1) / pageSize))
+        setCurrentPage(Math.ceil((totalCount + 1) / pageSize))
       } else {
         alert(t("applicationError"))
       }
@@ -142,12 +147,7 @@ const CourseApplications = () => {
   }
 
   // Pagination logic
-  const totalApplications = applications.length
-  const totalPages = Math.ceil(totalApplications / pageSize)
-  const paginatedApplications = applications.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
+  const totalPages = Math.ceil(totalCount / pageSize)
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
@@ -230,12 +230,12 @@ const CourseApplications = () => {
             </div>
           </div>
           <div className="mt-4 flex space-x-2">
-            {/* <button
+            <button
               onClick={handleAdd}
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
             >
-              {t("addApplicationButton")}
-            </button> */}
+              {t("add")}
+            </button>
             <button
               onClick={cancelAdd}
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
@@ -256,7 +256,7 @@ const CourseApplications = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm mb-1">{t("totalApplications", "Jami arizalar")}</p>
-                <p className="text-2xl font-bold text-green-600">{applications.length}</p>
+                <p className="text-2xl font-bold text-green-600">{totalCount}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,7 +324,7 @@ const CourseApplications = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedApplications.map((application) => (
+              {applications.map((application) => (
                 <tr key={application.id} className="hover:bg-gray-50 transition-colors duration-200">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
