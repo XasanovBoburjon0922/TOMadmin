@@ -4,5 +4,17 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // bu yerda kerakli path bo‘lsa yozing, default uchun '/' qoladi
+  base: '/', // default
+  server: {
+    host: '0.0.0.0',
+    allowedHosts: [
+      'admin.tom-education.uz'
+    ]
+  },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: [
+      'admin.tom-education.uz'
+    ]
+  }
 })
