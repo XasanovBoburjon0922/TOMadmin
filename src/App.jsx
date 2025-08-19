@@ -22,6 +22,7 @@ import Students from "./pages/Students"
 import Login from "./pages/Login"
 import CourseApplications from "./pages/Application"
 import LanguageSwitcher from "./components/LanguageSwitcher" // Import the LanguageSwitcher component
+import Admins from "./pages/Admins"
 
 const { Header, Sider, Content } = Layout
 
@@ -36,60 +37,66 @@ export default function App() {
     {
       key: "1",
       icon: <DashboardOutlined />,
-      label: t("dashboard"), // Use translation key
+      label: t("dashboard"),
     },
     {
       key: "2",
       icon: <TeamOutlined />,
-      label: t("teachers"), // Use translation key
+      label: t("teachers"),
     },
     {
       key: "3",
       icon: <BankOutlined />,
-      label: t("branches"), // Use translation key
+      label: t("branches"),
     },
     {
       key: "4",
       icon: <BookOutlined />,
-      label: t("courses"), // Use translation key
+      label: t("courses"),
     },
     {
       key: "5",
       icon: <PictureOutlined />,
-      label: t("gallery"), // Use translation key
+      label: t("gallery"),
     },
     {
       key: "6",
       icon: <UserOutlined />,
-      label: t("totalStudents"), // Use translation key
+      label: t("totalStudents"),
     },
     {
       key: "7",
       icon: <FileTextOutlined />,
-      label: t("courseApplications"), // Use translation key
+      label: t("courseApplications"),
     },
-  ]
-
+    {
+      key: "8",
+      icon: <UserOutlined />,
+      label: t("admins_list"), // Yangi menyuelement
+    },
+  ];
   const renderContent = () => {
     switch (selectedKey) {
       case "1":
-        return <Dashboard />
+        return <Dashboard />;
       case "2":
-        return <Teachers />
+        return <Teachers />;
       case "3":
-        return <Branches />
+        return <Branches />;
       case "4":
-        return <Courses />
+        return <Courses />;
       case "5":
-        return <Gallery />
+        return <Gallery />;
       case "6":
-        return <Students />
+        return <Students />;
       case "7":
-        return <CourseApplications />
+        return <CourseApplications />;
+      case "8":
+        return <Admins />;
       default:
-        return <Dashboard />
+        return <Dashboard />;
     }
-  }
+  };
 
   if (!isAuthenticated) {
     return <Login onLogin={() => setIsAuthenticated(true)} />
