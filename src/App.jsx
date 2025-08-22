@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Layout, Menu, Spin } from "antd"
+import { useState, useContext } from "react";
+import { Layout, Menu, Spin } from "antd";
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -11,70 +11,39 @@ import {
   UserOutlined,
   LogoutOutlined,
   FileTextOutlined,
-} from "@ant-design/icons"
-import { useTranslation } from "react-i18next"
-import Dashboard from "./pages/Dashboard"
-import Teachers from "./pages/Teachers"
-import Branches from "./pages/Branches"
-import Courses from "./pages/Courses"
-import Gallery from "./pages/Gallery"
-import Students from "./pages/Students"
-import Login from "./pages/Login"
-import CourseApplications from "./pages/Application"
-import LanguageSwitcher from "./components/LanguageSwitcher" // Import the LanguageSwitcher component
-import Admins from "./pages/Admins"
+} from "@ant-design/icons";
+import { useTranslation } from "react-i18next";
+import Dashboard from "./pages/Dashboard";
+import Teachers from "./pages/Teachers";
+import Branches from "./pages/Branches";
+import Courses from "./pages/Courses";
+import Gallery from "./pages/Gallery";
+import Students from "./pages/Students";
+import CourseApplications from "./pages/Application";
+import Login from "./pages/Login";
+import LanguageSwitcher from "./components/LanguageSwitcher";
+import Admins from "./pages/Admins";
+import { useAuth } from "./context/AuthContext";
 
-const { Header, Sider, Content } = Layout
+const { Header, Sider, Content } = Layout;
 
 export default function App() {
-  const { t } = useTranslation() // Hook to access translations
-  const [collapsed, setCollapsed] = useState(false)
-  const [selectedKey, setSelectedKey] = useState("1")
-  const [loading, setLoading] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(true) // Set to false for login
+  const { t } = useTranslation();
+  const { isAuthenticated, logout, isLoading } = useAuth(); // Use AuthContext
+  const [collapsed, setCollapsed] = useState(false);
+  const [selectedKey, setSelectedKey] = useState("1");
 
   const menuItems = [
-    {
-      key: "1",
-      icon: <DashboardOutlined />,
-      label: t("dashboard"),
-    },
-    {
-      key: "2",
-      icon: <TeamOutlined />,
-      label: t("teachers"),
-    },
-    {
-      key: "3",
-      icon: <BankOutlined />,
-      label: t("branches"),
-    },
-    {
-      key: "4",
-      icon: <BookOutlined />,
-      label: t("courses"),
-    },
-    {
-      key: "5",
-      icon: <PictureOutlined />,
-      label: t("gallery"),
-    },
-    {
-      key: "6",
-      icon: <UserOutlined />,
-      label: t("totalStudents"),
-    },
-    {
-      key: "7",
-      icon: <FileTextOutlined />,
-      label: t("courseApplications"),
-    },
-    {
-      key: "8",
-      icon: <UserOutlined />,
-      label: t("admins_list"), // Yangi menyuelement
-    },
+    { key: "1", icon: <DashboardOutlined />, label: t("dashboard") },
+    { key: "2", icon: <TeamOutlined />, label: t("teachers") },
+    { key: "3", icon: <BankOutlined />, label: t("branches") },
+    { key: "4", icon: <BookOutlined />, label: t("courses") },
+    { key: "5", icon: <PictureOutlined />, label: t("gallery") },
+    { key: "6", icon: <UserOutlined />, label: t("totalStudents") },
+    { key: "7", icon: <FileTextOutlined />, label: t("courseApplications") },
+    { key: "8", icon: <UserOutlined />, label: t("admins_list") },
   ];
+
   const renderContent = () => {
     switch (selectedKey) {
       case "1":
@@ -98,8 +67,23 @@ export default function App() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Spin size="large" style={{ color: "#22c55e" }} />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />
+    return <Login />;
   }
 
   return (
@@ -174,7 +158,7 @@ export default function App() {
             Tom Education
           </h1>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <LanguageSwitcher /> {/* Add LanguageSwitcher before admin avatar */}
+            <LanguageSwitcher />
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div
                 style={{
@@ -189,7 +173,7 @@ export default function App() {
               >
                 <UserOutlined style={{ color: "white" }} />
               </div>
-              <span style={{ color: "#374151" }}>Admin</span> {/* Use translation for "Admin" */}
+              <span style={{ color: "#374151" }}>{t("admin")}</span>
             </div>
             <LogoutOutlined
               style={{
@@ -197,7 +181,7 @@ export default function App() {
                 cursor: "pointer",
                 fontSize: 16,
               }}
-              onClick={() => setIsAuthenticated(false)}
+              onClick={logout}
             />
           </div>
         </Header>
@@ -211,27 +195,9 @@ export default function App() {
             position: "relative",
           }}
         >
-          {loading && (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(255, 255, 255, 0.8)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}
-            >
-              <Spin size="large" style={{ color: "#22c55e" }} />
-            </div>
-          )}
           {renderContent()}
         </Content>
       </Layout>
     </Layout>
-  )
+  );
 }
