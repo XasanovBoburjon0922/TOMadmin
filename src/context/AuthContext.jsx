@@ -35,9 +35,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch("https://api.tom-education.uz/users/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ name, password }),
       })
 

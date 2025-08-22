@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next"
 const CourseApplications = () => {
   const { t } = useTranslation()
   const [applications, setApplications] = useState([])
-  const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({
@@ -23,38 +22,43 @@ const CourseApplications = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [totalCount, setTotalCount] = useState(0) // New state for total_count
+  const [totalCount, setTotalCount] = useState(0)
   const pageSizeOptions = [5, 10, 20, 50]
 
   useEffect(() => {
     fetchApplications()
-    fetchCourses()
-  }, [currentPage, pageSize]) // Re-fetch when page or page size changes
+  }, [currentPage, pageSize])
+
+  const getToken = () => {
+    return localStorage.getItem("token")
+  }
 
   const fetchApplications = async () => {
     setLoading(true)
     try {
+      const token = getToken()
       const offset = (currentPage - 1) * pageSize
       const response = await fetch(
-        `https://api.tom-education.uz/course_applications/list?offset=${offset}&limit=${pageSize}`
+        `https://api.tom-education.uz/course_applications/list?offset=${offset}&limit=${pageSize}`,
+        {
+          headers: {
+            "accept": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
       )
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch applications")
+      }
+
       const data = await response.json()
       setApplications(data.applications || [])
-      setTotalCount(data.total_count || 0) // Set total_count from API response
+      setTotalCount(data.total_count || 0)
     } catch (error) {
       console.error(t("fetchError"), error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchCourses = async () => {
-    try {
-      const response = await fetch("https://api.tom-education.uz/courses/list")
-      const data = await response.json()
-      setCourses(data.courses || [])
-    } catch (error) {
-      console.error("Kurslarni yuklashda xatolik:", error)
     }
   }
 
@@ -69,10 +73,12 @@ const CourseApplications = () => {
 
   const handleUpdate = async (id) => {
     try {
+      const token = getToken()
       const response = await fetch("https://api.tom-education.uz/course_applications/update", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify({
           id,
@@ -84,6 +90,8 @@ const CourseApplications = () => {
         await fetchApplications()
         setEditingId(null)
         setEditForm({ course_id: "", full_name: "", phone: "" })
+      } else {
+        throw new Error("Failed to update application")
       }
     } catch (error) {
       console.error(t("fetchError"), error)
@@ -93,16 +101,22 @@ const CourseApplications = () => {
   const handleDelete = async (id) => {
     if (window.confirm(t("deleteConfirm", "Ushbu arizani o'chirishni xohlaysizmi?"))) {
       try {
+        const token = getToken()
         const response = await fetch(`https://api.tom-education.uz/course_applications/delete/${id}`, {
           method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
         })
 
         if (response.ok) {
           await fetchApplications()
-          // Adjust current page if necessary
           if (applications.length <= (currentPage - 1) * pageSize + 1 && currentPage > 1) {
             setCurrentPage(currentPage - 1)
           }
+        } else {
+          throw new Error("Failed to delete application")
         }
       } catch (error) {
         console.error(t("fetchError"), error)
@@ -112,10 +126,12 @@ const CourseApplications = () => {
 
   const handleAdd = async () => {
     try {
+      const token = getToken()
       const response = await fetch("https://api.tom-education.uz/course_applications/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: token ? `${token}` : "",
         },
         body: JSON.stringify(addForm),
       })
@@ -125,7 +141,6 @@ const CourseApplications = () => {
         setAddForm({ course_id: "", full_name: "", phone: "" })
         setShowAddForm(false)
         alert(t("applicationSuccess"))
-        // Move to the last page to show the new application
         setCurrentPage(Math.ceil((totalCount + 1) / pageSize))
       } else {
         alert(t("applicationError"))
@@ -146,7 +161,6 @@ const CourseApplications = () => {
     setAddForm({ course_id: "", full_name: "", phone: "" })
   }
 
-  // Pagination logic
   const totalPages = Math.ceil(totalCount / pageSize)
 
   const handlePageChange = (page) => {
@@ -155,7 +169,7 @@ const CourseApplications = () => {
 
   const handlePageSizeChange = (e) => {
     setPageSize(Number(e.target.value))
-    setCurrentPage(1) // Reset to first page when page size changes
+    setCurrentPage(1)
   }
 
   if (loading) {
@@ -458,11 +472,10 @@ const CourseApplications = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${
-                  currentPage === 1
+                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${currentPage === 1
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-green-500 hover:bg-green-600 text-white"
-                }`}
+                  }`}
               >
                 {t("previous")}
               </button>
@@ -472,11 +485,10 @@ const CourseApplications = () => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${
-                  currentPage === totalPages
+                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${currentPage === totalPages
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-green-500 hover:bg-green-600 text-white"
-                }`}
+                  }`}
               >
                 {t("next")}
               </button>

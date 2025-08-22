@@ -5,24 +5,54 @@ import { Table, Button, Modal, Form, Input, message, Upload } from "antd";
 import { UserOutlined, DeleteOutlined, EditOutlined, UploadOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import dayjs from "dayjs";
 
 const Admins = () => {
   const { t } = useTranslation();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
 
-  // Adminlarni API'dan olish
+  const baseURL = "https://api.tom-education.uz";
+
+  // Get token from localStorage
+  const getToken = () => {
+    const token = localStorage.getItem("token");
+    console.log("Token:", token);
+    return token;
+  };
+
+  // Fetch admins
   const fetchAdmins = async () => {
     setLoading(true);
+    const token = getToken();
+    if (!token) {
+      message.error(t("no_token_error"));
+      window.location.href = "/login";
+      return;
+    }
     try {
-      const response = await axios.get("https://api.tom-education.uz/users");
+      const response = await axios.get(`${baseURL}/users/list`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      console.log("Fetch admins response:", response.data);
       setAdmins(response.data.users);
     } catch (error) {
-      message.error(t("fetch_admins_error"));
+      console.error("Fetch admins error:", error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        message.error(t("unauthorized_error"));
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      } else {
+        message.error(error.response?.data?.message || t("fetch_admins_error"));
+      }
     } finally {
       setLoading(false);
     }
@@ -32,68 +62,136 @@ const Admins = () => {
     fetchAdmins();
   }, []);
 
-  // Rasm yuklash
+  // Handle file upload
   const handleUpload = async ({ file, onSuccess, onError }) => {
+    const token = getToken();
+    if (!token) {
+      message.error(t("no_token_error"));
+      onError(new Error("No token"));
+      return;
+    }
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const response = await axios.post("https://api.tom-education.uz/file-upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const response = await axios.post(`${baseURL}/file-upload`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
+      console.log("Upload response:", response.data);
       if (response.status === 200) {
+        const imageUrl = response.data.Url || response.data.url || response.data.data?.url;
+        if (!imageUrl) {
+          throw new Error("No URL in response");
+        }
+        form.setFieldsValue({ profile_picture_url: imageUrl });
         onSuccess(response.data);
         message.success(t("image_uploaded"));
-        form.setFieldsValue({ profile_picture_url: response.data.Url });
       }
     } catch (error) {
+      console.error("Upload error:", error.response?.data || error.message);
       onError(error);
-      message.error(t("image_upload_error"));
+      message.error(error.response?.data?.message || t("image_upload_error"));
     }
   };
 
-  // Yangi admin qo'shish yoki tahrirlash
+  // Save or update admin
   const handleSaveAdmin = async (values) => {
+    setSaving(true);
+    const token = getToken();
+    if (!token) {
+      message.error(t("no_token_error"));
+      window.location.href = "/login";
+      setSaving(false);
+      return;
+    }
+    console.log("Submitting values:", values);
+    console.log("Editing admin:", editingAdmin); // Debug editingAdmin state
     try {
       if (editingAdmin) {
-        // Tahrirlash
-        await axios.put("https://api.tom-education.uz/users", {
-          id: editingAdmin.id,
-          ...values,
-        });
+        console.log("Performing update operation");
+        await axios.put(
+          `${baseURL}/users/update`,
+          { id: editingAdmin.id, ...values },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
         message.success(t("admin_updated"));
       } else {
-        // Yangi admin qo'shish
-        await axios.post("https://api.tom-education.uz/users/create", values);
+        console.log("Performing create operation");
+        await axios.post(
+          `${baseURL}/users/create`,
+          values,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
         message.success(t("admin_created"));
       }
       fetchAdmins();
       setIsModalVisible(false);
       form.resetFields();
       setFileList([]);
-      setEditingAdmin(null);
+      setEditingAdmin(null); // Ensure editingAdmin is cleared
     } catch (error) {
-      message.error(t("save_admin_error"));
+      console.error("Save admin error:", error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        message.error(t("unauthorized_error"));
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      } else {
+        message.error(error.response?.data?.message || t("save_admin_error"));
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Adminni o'chirish
+  // Delete admin
   const handleDeleteAdmin = async (id) => {
+    const token = getToken();
+    if (!token) {
+      message.error(t("no_token_error"));
+      window.location.href = "/login";
+      return;
+    }
     Modal.confirm({
       title: t("confirm_delete"),
       onOk: async () => {
         try {
-          await axios.delete(`https://api.tom-education.uz/users/${id}`);
+          await axios.delete(`${baseURL}/users/delete/${id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
           message.success(t("admin_deleted"));
           fetchAdmins();
         } catch (error) {
-          message.error(t("delete_admin_error"));
+          console.error("Delete admin error:", error.response?.data || error.message);
+          if (error.response?.status === 401) {
+            message.error(t("unauthorized_error"));
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          } else {
+            message.error(error.response?.data?.message || t("delete_admin_error"));
+          }
         }
       },
     });
   };
 
-  // Modalni ochish (yangi yoki tahrirlash uchun)
+  // Open modal for adding/editing admin
   const showModal = (admin = null) => {
+    console.log("Opening modal with admin:", admin); // Debug admin value
     setEditingAdmin(admin);
     if (admin) {
       form.setFieldsValue({
@@ -128,6 +226,7 @@ const Admins = () => {
       title: t("created_at"),
       dataIndex: "created_at",
       key: "created_at",
+      render: (text) => dayjs(text).format("YYYY-MM-DD HH:mm"),
     },
     {
       title: t("actions"),
@@ -168,12 +267,14 @@ const Admins = () => {
         title={editingAdmin ? t("edit_admin") : t("add_admin")}
         open={isModalVisible}
         onCancel={() => {
+          console.log("Closing modal, resetting state"); // Debug modal close
           setIsModalVisible(false);
           form.resetFields();
           setFileList([]);
-          setEditingAdmin(null);
+          setEditingAdmin(null); // Ensure editingAdmin is cleared
         }}
         onOk={() => form.submit()}
+        okButtonProps={{ loading: saving }}
       >
         <Form form={form} onFinish={handleSaveAdmin} layout="vertical">
           <Form.Item
@@ -186,7 +287,10 @@ const Admins = () => {
           <Form.Item
             name="password"
             label={t("password")}
-            rules={[{ required: !editingAdmin, message: t("password_required") }]}
+            rules={[
+              { required: !editingAdmin, message: t("password_required") },
+              { min: 1, message: t("password_min_length") }, // Adjusted to reasonable minimum
+            ]}
           >
             <Input.Password />
           </Form.Item>
