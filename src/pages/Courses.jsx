@@ -26,13 +26,17 @@ import {
 
 const { Title } = Typography
 
-// API function for file upload
+const getToken = () => localStorage.getItem("token")
+
 const uploadFile = async (file) => {
   const formData = new FormData()
   formData.append("file", file)
   try {
     const response = await fetch("https://api.tom-education.uz/file-upload", {
       method: "POST",
+      headers: {
+        Authorization: `${getToken()}`,
+      },
       body: formData,
     })
     const data = await response.json()
@@ -74,6 +78,7 @@ const Courses = () => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `${getToken()}`,
         },
       })
       const data = await response.json()
@@ -110,7 +115,7 @@ const Courses = () => {
         branch_description: values.branch_description,
         duration: values.duration,
         description: descriptionArray,
-        price: values.price, // Send price as-is without parseFloat
+        price: values.price, 
         type: values.type || "",
         picture_url: pictureUrl,
       }
@@ -123,6 +128,7 @@ const Courses = () => {
           method: editingCourse ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `${getToken()}`,
           },
           body: JSON.stringify(payload),
         }
@@ -164,7 +170,7 @@ const Courses = () => {
       const response = await fetch(`https://api.tom-education.uz/courses/delete?id=${id}`, {
         method: "DELETE",
         headers: {
-          "Content-Type": "application/json",
+          Authorization: `${getToken()}`,
         },
       })
       if (!response.ok) {
@@ -470,8 +476,8 @@ const Courses = () => {
                 >
                   <InputNumber
                     min={0}
-                    step={0.1} // Allow decimal inputs
-                    precision={2} // Limit to 2 decimal places
+                    step={0.1} 
+                    precision={2} 
                     className="w-full rounded-lg"
                     placeholder={t("coursePrice")}
                   />
@@ -496,24 +502,6 @@ const Courses = () => {
               label={t("uploadImage")}
               valuePropName="fileList"
               getValueFromEvent={(e) => (Array.isArray(e) ? e : e && e.fileList)}
-              rules={[
-                {
-                  validator: (_, fileList) => {
-                    if (fileList && fileList.length > 0) {
-                      const file = fileList[0].originFileObj
-                      const isImage = file.type.startsWith("image/")
-                      const isLt2M = file.size / 1024 / 1024 < 2
-                      if (!isImage) {
-                        return Promise.reject(new Error(t("uploadImageError")))
-                      }
-                      if (!isLt2M) {
-                        return Promise.reject(new Error(t("fileTooLarge")))
-                      }
-                    }
-                    return Promise.resolve()
-                  },
-                },
-              ]}
             >
               <Upload.Dragger
                 name="file"

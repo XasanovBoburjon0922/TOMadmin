@@ -16,13 +16,17 @@ export default function Students() {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
 
-  // Fayl yuklash funksiyasi
+  const getToken = () => localStorage.getItem("token")
+
   const uploadFile = async (file) => {
     const formData = new FormData()
     formData.append("file", file)
     try {
       const response = await axios.post("https://api.tom-education.uz/file-upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `${getToken()}`,
+        },
       })
       console.log("Fayl yuklash javobi:", response.data)
       if (response.status === 200 && response.data.Url) {
@@ -48,7 +52,11 @@ export default function Students() {
   const fetchStudents = async () => {
     try {
       setLoading(true)
-      const response = await fetch("https://api.tom-education.uz/certificates/list")
+      const response = await fetch("https://api.tom-education.uz/certificates/list", {
+        headers: {
+          Authorization: `${getToken()}`,
+        },
+      })
       const data = await response.json()
       console.log("API javobi (certificates/list):", data)
       if (response.ok && data && Array.isArray(data.certificates)) {
@@ -125,6 +133,7 @@ export default function Students() {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `${getToken()}`,
           },
           body: JSON.stringify(studentData),
         })
@@ -133,6 +142,7 @@ export default function Students() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `${getToken()}`,
           },
           body: JSON.stringify(studentData),
         })
@@ -161,6 +171,9 @@ export default function Students() {
     try {
       const response = await fetch(`https://api.tom-education.uz/certificates/delete?id=${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `${getToken()}`,
+        },
       })
       if (response.ok) {
         message.success(t("deleteStudentSuccess"))

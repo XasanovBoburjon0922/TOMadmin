@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { message } from "antd"
 
 const CourseApplications = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [applications, setApplications] = useState([])
+  const [courses, setCourses] = useState([]) 
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({
@@ -19,13 +21,13 @@ const CourseApplications = () => {
     phone: "",
   })
   const [showAddForm, setShowAddForm] = useState(false)
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
   const pageSizeOptions = [5, 10, 20, 50]
 
   useEffect(() => {
+    fetchCourses() 
     fetchApplications()
   }, [currentPage, pageSize])
 
@@ -33,30 +35,64 @@ const CourseApplications = () => {
     return localStorage.getItem("token")
   }
 
+  const fetchCourses = async () => {
+    try {
+      const token = getToken()
+      if (!token) {
+        message.error(t("noToken"))
+        setCourses([])
+        return
+      }
+      const response = await fetch("https://api.tom-education.uz/courses/list", {
+        headers: {
+          "accept": "application/json",
+          Authorization: `${token}`,
+        },
+      })
+      if (!response.ok) {
+        throw new Error("Failed to fetch courses")
+      }
+      const data = await response.json()
+      setCourses(Array.isArray(data.courses) ? data.courses : [])
+    } catch (error) {
+      console.error(t("fetchError"), error)
+      message.error(t("fetchError"))
+      setCourses([])
+    }
+  }
+
   const fetchApplications = async () => {
     setLoading(true)
     try {
       const token = getToken()
+      if (!token) {
+        message.error(t("noToken"))
+        setApplications([])
+        setTotalCount(0)
+        return
+      }
       const offset = (currentPage - 1) * pageSize
       const response = await fetch(
         `https://api.tom-education.uz/course_applications/list?offset=${offset}&limit=${pageSize}`,
         {
           headers: {
             "accept": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
+            Authorization: `${token}`,
           },
         }
       )
-
       if (!response.ok) {
-        throw new Error("Failed to fetch applications")
+        if (response.status === 401) {
+          throw new Error(t("unauthorizedError"))
+        }
+        throw new Error(`Failed to fetch applications: ${response.statusText}`)
       }
-
       const data = await response.json()
-      setApplications(data.applications || [])
+      setApplications(Array.isArray(data.applications) ? data.applications : [])
       setTotalCount(data.total_count || 0)
     } catch (error) {
       console.error(t("fetchError"), error)
+      message.error(`${t("fetchError")}: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -74,80 +110,103 @@ const CourseApplications = () => {
   const handleUpdate = async (id) => {
     try {
       const token = getToken()
+      if (!token) {
+        message.error(t("noToken"))
+        return
+      }
       const response = await fetch("https://api.tom-education.uz/course_applications/update", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `${token}`,
         },
         body: JSON.stringify({
           id,
           ...editForm,
         }),
       })
-
-      if (response.ok) {
-        await fetchApplications()
-        setEditingId(null)
-        setEditForm({ course_id: "", full_name: "", phone: "" })
-      } else {
-        throw new Error("Failed to update application")
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(t("unauthorizedError"))
+        }
+        throw new Error(`Failed to update application: ${response.statusText}`)
       }
+      message.success(t("saveSuccess"))
+      await fetchApplications()
+      setEditingId(null)
+      setEditForm({ course_id: "", full_name: "", phone: "" })
     } catch (error) {
       console.error(t("fetchError"), error)
+      message.error(`${t("fetchError")}: ${error.message}`)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm(t("deleteConfirm", "Ushbu arizani o'chirishni xohlaysizmi?"))) {
+    if (window.confirm(t("deleteConfirm"))) {
       try {
         const token = getToken()
+        if (!token) {
+          message.error(t("noToken"))
+          return
+        }
         const response = await fetch(`https://api.tom-education.uz/course_applications/delete/${id}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
+            Authorization: `${token}`,
           },
         })
-
-        if (response.ok) {
-          await fetchApplications()
-          if (applications.length <= (currentPage - 1) * pageSize + 1 && currentPage > 1) {
-            setCurrentPage(currentPage - 1)
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error(t("unauthorizedError"))
           }
-        } else {
-          throw new Error("Failed to delete application")
+          throw new Error(`Failed to delete application: ${response.statusText}`)
+        }
+        message.success(t("deleteSuccess"))
+        await fetchApplications()
+        if (applications.length <= (currentPage - 1) * pageSize + 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1)
         }
       } catch (error) {
         console.error(t("fetchError"), error)
+        message.error(`${t("fetchError")}: ${error.message}`)
       }
     }
   }
 
   const handleAdd = async () => {
+    if (!addForm.course_id || !addForm.full_name || !addForm.phone) {
+      message.error(t("formIncomplete"))
+      return
+    }
     try {
       const token = getToken()
+      if (!token) {
+        message.error(t("noToken"))
+        return
+      }
       const response = await fetch("https://api.tom-education.uz/course_applications/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `${token}` : "",
+          Authorization: `${token}`,
         },
         body: JSON.stringify(addForm),
       })
-
-      if (response.ok) {
-        await fetchApplications()
-        setAddForm({ course_id: "", full_name: "", phone: "" })
-        setShowAddForm(false)
-        alert(t("applicationSuccess"))
-        setCurrentPage(Math.ceil((totalCount + 1) / pageSize))
-      } else {
-        alert(t("applicationError"))
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(t("unauthorizedError"))
+        }
+        throw new Error(`Failed to create application: ${response.statusText}`)
       }
+      message.success(t("applicationSuccess"))
+      await fetchApplications()
+      setAddForm({ course_id: "", full_name: "", phone: "" })
+      setShowAddForm(false)
+      setCurrentPage(Math.ceil((totalCount + 1) / pageSize))
     } catch (error) {
       console.error(t("applicationError"), error)
-      alert(t("applicationError"))
+      message.error(`${t("applicationError")}: ${error.message}`)
     }
   }
 
@@ -187,7 +246,7 @@ const CourseApplications = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">{t("courseApplications")}</h1>
-            <p className="text-green-100 text-lg">{t("manageApplications", "Barcha kurs arizalarini boshqaring")}</p>
+            <p className="text-green-100 text-lg">{t("manageApplications")}</p>
           </div>
           <div className="hidden md:block">
             <svg className="w-16 h-16 text-white/20" fill="currentColor" viewBox="0 0 20 20">
@@ -199,6 +258,12 @@ const CourseApplications = () => {
             </svg>
           </div>
         </div>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="mt-4 bg-white text-green-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+        >
+          {t("addApplication")}
+        </button>
       </div>
 
       {showAddForm && (
@@ -234,7 +299,7 @@ const CourseApplications = () => {
                 {courses.length > 0 ? (
                   courses.map((course) => (
                     <option key={course.id} value={course.id}>
-                      {course.name?.[i18n.language] || course.name.en}
+                      {course.name?.[i18n.language] || course.name?.en || "N/A"}
                     </option>
                   ))
                 ) : (
@@ -263,13 +328,13 @@ const CourseApplications = () => {
       {/* Statistics */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">{t("overview", "Umumiy ma'lumotlar")}</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{t("overview")}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-green-50 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm mb-1">{t("totalApplications", "Jami arizalar")}</p>
+                <p className="text-gray-500 text-sm mb-1">{t("totalApplications")}</p>
                 <p className="text-2xl font-bold text-green-600">{totalCount}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -287,7 +352,7 @@ const CourseApplications = () => {
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm mb-1">{t("todayApplications", "Bugungi arizalar")}</p>
+                <p className="text-gray-500 text-sm mb-1">{t("todayApplications")}</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {
                     applications.filter((app) => {
@@ -313,10 +378,9 @@ const CourseApplications = () => {
         </div>
       </div>
 
-      {/* Applications List */}
       <div className="bg-white rounded-2xl shadow-sm border-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800">{t("applicationsList", "Arizalar ro'yxati")}</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{t("applicationsList")}</h2>
         </div>
 
         <div className="overflow-x-auto">
@@ -384,7 +448,7 @@ const CourseApplications = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(application.created_at).toLocaleDateString("uz-UZ")}
+                    {new Date(application.created_at).toLocaleDateString(i18n.language)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {editingId === application.id ? (
@@ -438,63 +502,6 @@ const CourseApplications = () => {
             </tbody>
           </table>
         </div>
-
-        {applications.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">{t("noApplications", "Arizalar topilmadi")}</h3>
-            <p className="mt-1 text-sm text-gray-500">{t("noApplicationsMessage", "Hozircha hech qanday ariza yo'q.")}</p>
-          </div>
-        ) : (
-          <div className="flex justify-between items-center p-6">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm text-gray-600">{t("itemsPerPage")}</label>
-              <select
-                value={pageSize}
-                onChange={handlePageSizeChange}
-                className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                {pageSizeOptions.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${currentPage === 1
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-green-500 hover:bg-green-600 text-white"
-                  }`}
-              >
-                {t("previous")}
-              </button>
-              <span className="text-sm text-gray-600">
-                {t("page")} {currentPage} / {totalPages}
-              </span>
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors duration-200 ${currentPage === totalPages
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-green-500 hover:bg-green-600 text-white"
-                  }`}
-              >
-                {t("next")}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -14,7 +14,6 @@ const Gallery = () => {
   const [editingGallery, setEditingGallery] = useState(null)
   const [viewMode, setViewMode] = useState("grid")
   const [form] = Form.useForm()
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const pageSizeOptions = [5, 10, 20, 50]
@@ -65,7 +64,7 @@ const Gallery = () => {
       fetchGalleries()
       setIsModalOpen(false)
       form.resetFields()
-      setCurrentPage(1) // Reset to first page after adding/editing
+      setCurrentPage(1) 
     } catch (error) {
       console.error("Submit error:", error.response?.data || error.message)
       message.error(error.message || t("fetchError"))
@@ -86,7 +85,6 @@ const Gallery = () => {
       await deleteGallery(id)
       message.success(t("delete"))
       fetchGalleries()
-      // Adjust current page if necessary
       if (galleries.length <= (currentPage - 1) * pageSize + 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1)
       }
@@ -98,7 +96,6 @@ const Gallery = () => {
     }
   }
 
-  // Pagination logic
   const totalGalleries = galleries.length
   const totalPages = Math.ceil(totalGalleries / pageSize)
   const paginatedGalleries = galleries.slice(
@@ -112,7 +109,7 @@ const Gallery = () => {
 
   const handlePageSizeChange = (e) => {
     setPageSize(Number(e.target.value))
-    setCurrentPage(1) // Reset to first page when page size changes
+    setCurrentPage(1) 
   }
 
   const columns = [

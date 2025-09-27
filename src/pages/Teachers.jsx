@@ -42,13 +42,17 @@ const Teachers = () => {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
 
-  // Fayl yuklash funksiyasi
+  const getToken = () => localStorage.getItem("token")
+
   const uploadFile = async (file) => {
     const formData = new FormData()
     formData.append("file", file)
     try {
       const response = await axios.post("https://api.tom-education.uz/file-upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `${getToken()}`,
+        },
       })
       if (response.status === 200 && response.data.Url) {
         return response.data.Url
@@ -68,12 +72,16 @@ const Teachers = () => {
   const fetchTeachers = async () => {
     setLoading(true)
     try {
-      const response = await fetch("https://api.tom-education.uz/teachers/list")
+      const response = await fetch("https://api.tom-education.uz/teachers/list", {
+        headers: {
+          Authorization: `${getToken()}`,
+        },
+      })
       const data = await response.json()
-      if (data.teacher) {
-        setTeachers(data.teacher)
+      if (response.ok) {
+        setTeachers(data.teacher || [])
       } else {
-        setTeachers([])
+        throw new Error(t("fetchError"))
       }
     } catch (error) {
       console.error(t("fetchError"), error)
@@ -138,6 +146,7 @@ const Teachers = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `${getToken()}`,
           },
           body: JSON.stringify(teacherData),
         })
@@ -146,6 +155,7 @@ const Teachers = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `${getToken()}`,
           },
           body: JSON.stringify(teacherData),
         })
@@ -191,6 +201,9 @@ const Teachers = () => {
     try {
       const response = await fetch(`https://api.tom-education.uz/teachers/delete?id=${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `${getToken()}`,
+        },
       })
       if (response.ok) {
         message.success(t("deleteTeacherSuccess"))
